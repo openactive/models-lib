@@ -2,12 +2,12 @@ const DATA_MODEL_OUTPUT_DIR = "../OpenActive.NET/";
 const DATA_MODEL_DOCS_URL_PREFIX = "https://developer.openactive.io/data-model/types/";
 
 const {getModels, getEnums, getMetaData} = require("@openactive/data-models");
-var fs = require("fs");
-var fsExtra = require("fs-extra");
-var request = require("sync-request");
-var path = require("path");
+let fs = require("fs");
+let fsExtra = require("fs-extra");
+let request = require("sync-request");
+let path = require("path");
 
-var EXTENSIONS = {
+let EXTENSIONS = {
   "beta": {
     "url": "https://www.openactive.io/ns-beta/beta.jsonld",
     "heading": "OpenActive Beta Extension properties",
@@ -28,7 +28,7 @@ class Generator {
 
     // Add all extensions and namespaces first, in case they reference each other
     Object.keys(extensions).forEach((prefix) => {
-      var extension = this.getExtension(extensions[prefix].url);
+      let extension = this.getExtension(extensions[prefix].url);
       if (!extension) throw "Error loading extension: " + prefix;
 
       extensions[prefix].graph = extension["@graph"];
@@ -40,7 +40,7 @@ class Generator {
     });
 
     Object.keys(extensions).forEach((prefix) => {
-      var extension = extensions[prefix];
+      let extension = extensions[prefix];
       this.augmentWithExtension(extension.graph, models, extension.url, prefix,
         namespaces);
       this.augmentEnumsWithExtension(extension.graph, enumMap, extension.url,
@@ -49,11 +49,11 @@ class Generator {
     });
 
     Object.keys(models).forEach((typeName) => {
-      var model = models[typeName];
+      let model = models[typeName];
       if (typeName != "undefined") { //ignores "model_list.json" (which appears to be ignored everywhere else)
 
-        var pageName = "models/" + this.getPropNameFromFQP(model.type) + ".cs";
-        var pageContent = this.createModelFile(model, models, extensions,
+        let pageName = "models/" + this.getPropNameFromFQP(model.type) + ".cs";
+        let pageContent = this.createModelFile(model, models, extensions,
           enumMap);
 
         console.log("NAME: " + pageName);
@@ -74,10 +74,10 @@ class Generator {
     Object.keys(enumMap).
       filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
       forEach((typeName) => {
-        var thisEnum = enumMap[typeName];
+        let thisEnum = enumMap[typeName];
 
-        var pageName = "enums/" + typeName + ".cs";
-        var pageContent = this.createEnumFile(typeName, thisEnum);
+        let pageName = "enums/" + typeName + ".cs";
+        let pageContent = this.createEnumFile(typeName, thisEnum);
 
         console.log("NAME: " + pageName);
         console.log(pageContent);
@@ -100,11 +100,11 @@ class Generator {
       if (node.type === "Class" && Array.isArray(node.subClassOf) &&
         node.subClassOf[0] != "schema:Enumeration") {
         // Only include subclasses for either OA or schema.org classes
-        var subClasses = node.subClassOf.filter(
+        let subClasses = node.subClassOf.filter(
           prop => models[this.getPropNameFromFQP(prop)] ||
             this.includedInSchema(prop));
 
-        var model = subClasses.length > 0 ? {
+        let model = subClasses.length > 0 ? {
             "type": node.id,
             // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
             "subClassOf": models[this.getPropNameFromFQP(subClasses[0])] ? "#" +
@@ -123,7 +123,7 @@ class Generator {
     // Add properties to classes
     extModelGraph.forEach((node) => {
       if (node.type === "Property") {
-        var field = {
+        let field = {
           "fieldName": this.getPropNameFromFQP(node.id),
           "alternativeTypes": node.rangeIncludes.map(
             type => this.expandPrefix(type, node.isArray, namespaces)),
@@ -137,7 +137,7 @@ class Generator {
           "extensionPrefix": extensionPrefix,
         };
         node.domainIncludes.forEach((prop) => {
-          var model = models[this.getPropNameFromFQP(prop)];
+          let model = models[this.getPropNameFromFQP(prop)];
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
@@ -167,8 +167,8 @@ class Generator {
 
   expandPrefix (prop, isArray, namespaces) {
     if (prop.lastIndexOf(":") > -1) {
-      var propNs = prop.substring(0, prop.indexOf(":"));
-      var propName = prop.substring(prop.indexOf(":") + 1);
+      let propNs = prop.substring(0, prop.indexOf(":"));
+      let propName = prop.substring(prop.indexOf(":") + 1);
       if (namespaces[propNs]) {
         if (propNs === "oa") {
           return (this.isArray ? "ArrayOf#" : "#") + propName;
@@ -183,16 +183,16 @@ class Generator {
   }
 
   renderGitHubIssueLink (url) {
-    var splitUrl = url.split("/");
-    var issueNumber = splitUrl[splitUrl.length - 1];
+    let splitUrl = url.split("/");
+    let issueNumber = splitUrl[splitUrl.length - 1];
     return "[#" + issueNumber + "](" + url + ")";
   }
 
   getExtension (extensionUrl) {
-    var response = request("GET", extensionUrl,
+    let response = request("GET", extensionUrl,
       {accept: "application/ld+json"});
     if (response && response.statusCode == 200) {
-      var body = JSON.parse(response.body);
+      let body = JSON.parse(response.body);
       return body["@graph"] && body["@context"] ? body : undefined;
     } else {
       return undefined;
@@ -210,7 +210,7 @@ class Generator {
   getPropertyWithInheritance (prop, model, models) {
     if (model[prop]) return model[prop];
 
-    var parentModel = this.getParentModel(model, models);
+    let parentModel = this.getParentModel(model, models);
     if (parentModel) {
       return this.getPropertyWithInheritance(prop, parentModel, models);
     }
@@ -219,8 +219,8 @@ class Generator {
   }
 
   getMergedPropertyWithInheritance (prop, model, models) {
-    var thisProp = model[prop] || [];
-    var parentModel = this.getParentModel(model, models);
+    let thisProp = model[prop] || [];
+    let parentModel = this.getParentModel(model, models);
     if (parentModel) {
       return thisProp.concat(
         this.getMergedPropertyWithInheritance(prop, parentModel, models));
@@ -230,9 +230,9 @@ class Generator {
   }
 
   obsoleteNotInSpecFields (model, models) {
-    var augFields = Object.assign({}, model.fields);
+    let augFields = Object.assign({}, model.fields);
 
-    var parentModel = this.getParentModel(model, models);
+    let parentModel = this.getParentModel(model, models);
     if (model.notInSpec && model.notInSpec.length > 0) model.notInSpec.forEach(
       (field) => {
         if (parentModel && parentModel.fields[field]) {
@@ -250,7 +250,7 @@ class Generator {
       });
 
     Object.keys(augFields).forEach((field) => {
-      var thisField = augFields[field];
+      let thisField = augFields[field];
 
       if ((thisField.sameAs && this.includedInSchema(thisField.sameAs)) ||
         (!thisField.sameAs && model.derivedFrom &&
@@ -269,7 +269,7 @@ class Generator {
   calculateInherits (subClassOf, derivedFrom, model) {
     // Prioritise subClassOf over derivedFrom
     if (subClassOf) {
-      var subClassOfName = this.convertToCamelCase(
+      let subClassOfName = this.convertToCamelCase(
         this.getPropNameFromFQP(subClassOf));
       if (this.includedInSchema(subClassOf)) {
         return `Schema.NET.${subClassOfName}`;
@@ -277,7 +277,7 @@ class Generator {
         return `${subClassOfName}`;
       }
     } else if (derivedFrom) {
-      var derivedFromName = this.convertToCamelCase(
+      let derivedFromName = this.convertToCamelCase(
         this.getPropNameFromFQP(derivedFrom));
       if (this.includedInSchema(derivedFrom)) {
         return `Schema.NET.${derivedFromName}`;
@@ -292,8 +292,8 @@ class Generator {
   }
 
   compareFields (xField, yField) {
-    var x = xField.fieldName.toLowerCase();
-    var y = yField.fieldName.toLowerCase();
+    let x = xField.fieldName.toLowerCase();
+    let y = yField.fieldName.toLowerCase();
 
     const knownPropertyNameOrders = {
       "context": 0,
@@ -323,11 +323,11 @@ class Generator {
       y = "startdate1";
     }
 
-    var isXKnown = knownPropertyNameOrders.hasOwnProperty(x);
-    var isYKnown = knownPropertyNameOrders.hasOwnProperty(y);
+    let isXKnown = knownPropertyNameOrders.hasOwnProperty(x);
+    let isYKnown = knownPropertyNameOrders.hasOwnProperty(y);
     if (isXKnown && isYKnown) {
-      var xIndex = knownPropertyNameOrders[x];
-      var yIndex = knownPropertyNameOrders[y];
+      let xIndex = knownPropertyNameOrders[x];
+      let yIndex = knownPropertyNameOrders[y];
       return compare(xIndex, yIndex);
     } else if (isXKnown) {
       return -1;
@@ -343,23 +343,23 @@ class Generator {
   }
 
   createModelFile (model, models, extensions, enumMap) {
-    var fullFields = this.obsoleteNotInSpecFields(model, models);
-    var fullFieldsList = Object.values(fullFields).
+    let fullFields = this.obsoleteNotInSpecFields(model, models);
+    let fullFieldsList = Object.values(fullFields).
       sort(this.compareFields).
       map((field, index) => {
         field.order = index + 6;
         return field;
       });
-    var fullModel = this.createFullModel(fullFields, model, models);
-    var derivedFrom = this.getPropertyWithInheritance("derivedFrom", model,
+    let fullModel = this.createFullModel(fullFields, model, models);
+    let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model,
       models);
-    var derivedFromName = this.convertToCamelCase(
+    let derivedFromName = this.convertToCamelCase(
       this.getPropNameFromFQP(derivedFrom));
 
-    var inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
+    let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
-    var hasBaseClass = inherits != "Schema.NET.JsonLdObject";
+    let hasBaseClass = inherits != "Schema.NET.JsonLdObject";
 
     return `
 using Newtonsoft.Json;
@@ -398,7 +398,7 @@ namespace OpenActive.NET
   }
 
   createEnumFile (typeName, thisEnum) {
-    var betaWarning = thisEnum.extensionPrefix == "beta"
+    let betaWarning = thisEnum.extensionPrefix == "beta"
       ? "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.] \n"
       : "";
     return `
@@ -439,7 +439,7 @@ namespace OpenActive.NET
   }
 
   getDotNetType (fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    var baseType = this.getDotNetBaseType(fullyQualifiedType, enumMap,
+    let baseType = this.getDotNetBaseType(fullyQualifiedType, enumMap,
       modelsMap,
       isExtension);
     if (this.isArray(fullyQualifiedType)) {
@@ -455,7 +455,7 @@ namespace OpenActive.NET
   }
 
   getDotNetBaseType (prefixedTypeName, enumMap, modelsMap, isExtension) {
-    var typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
         return "bool?";
@@ -517,15 +517,15 @@ namespace OpenActive.NET
   }
 
   createPropertyFromField (field, models, enumMap, hasBaseClass) {
-    var memberName = field.extensionPrefix
+    let memberName = field.extensionPrefix
       ? `${field.extensionPrefix}:${field.fieldName}`
       : field.fieldName;
-    var isExtension = !!field.extensionPrefix;
-    var isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
-    var propertyName = this.convertToCamelCase(field.fieldName);
-    var propertyType = this.createTypeString(field, models, enumMap,
+    let isExtension = !!field.extensionPrefix;
+    let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
+    let propertyName = this.convertToCamelCase(field.fieldName);
+    let propertyType = this.createTypeString(field, models, enumMap,
       isExtension);
-    var jsonConverter = this.renderJsonConverter(field, propertyType);
+    let jsonConverter = this.renderJsonConverter(field, propertyType);
     return !field.obsolete ? `
         /// ${this.createDescriptionWithExample(field).
       replace(/\n/g, "\n        /// ")}
@@ -542,13 +542,13 @@ namespace OpenActive.NET
   }
 
   createTypeString (field, models, enumMap, isExtension) {
-    var types = [].concat(field.alternativeTypes).
+    let types = [].concat(field.alternativeTypes).
       concat(field.requiredType).
       concat(field.alternativeModels).
       concat(field.model).
       filter(type => type !== undefined);
 
-    var types = types.map(
+    types = types.map(
       fullyQualifiedType => this.getDotNetType(fullyQualifiedType, enumMap,
         models,
         isExtension));
@@ -577,8 +577,8 @@ namespace OpenActive.NET
   getPropNameFromFQP (prop) {
     if (prop === null || prop === undefined) return null;
     //Just the characters after the last /, # or :
-    var match = prop.match(/[/#:]/g);
-    var lastIndex = match === null ? -1 : prop.lastIndexOf(
+    let match = prop.match(/[/#:]/g);
+    let lastIndex = match === null ? -1 : prop.lastIndexOf(
       match[match.length - 1]);
     if (lastIndex > -1) {
       return prop.substring(lastIndex + 1);
@@ -591,7 +591,7 @@ namespace OpenActive.NET
         this.renderCode(field.requiredContent, field.fieldName,
           field.requiredType);
     } else {
-      var betaWarning = field.extensionPrefix == "beta"
+      let betaWarning = field.extensionPrefix == "beta"
         ? "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.] \n"
         : "";
       return `<summary>\n${betaWarning}${field.description.join(
@@ -607,7 +607,7 @@ namespace OpenActive.NET
       return "<code>\n" + (fieldName ? `"` + fieldName + `": ` : "") +
         JSON.stringify(code, null, 2) + "\n</code>";
     } else {
-      var isNumber = requiredType &&
+      let isNumber = requiredType &&
         (requiredType.indexOf("Integer") > -1 || requiredType.indexOf("Float") >
           -1);
       return "<code>\n" + (fieldName ? `"` + fieldName + `": ` : "") +
@@ -617,7 +617,7 @@ namespace OpenActive.NET
 
   createFullModel (fields, partialModel, models) {
     // Ensure each input prop exists
-    var model = {
+    let model = {
       requiredFields: this.getPropertyWithInheritance("requiredFields",
         partialModel,
         models) || [],
@@ -629,12 +629,12 @@ namespace OpenActive.NET
         partialModel, models) || [],
     };
     // Get all options that are used in requiredOptions
-    var optionSetFields = [];
+    let optionSetFields = [];
     model.requiredOptions.forEach((requiredOption) => {
       optionSetFields = optionSetFields.concat(requiredOption.options);
     });
     // Create map of all fields
-    var optionalFieldsMap = Object.keys(fields).reduce((map, obj) => {
+    let optionalFieldsMap = Object.keys(fields).reduce((map, obj) => {
       map[obj] = true;
       return map;
     }, {});
@@ -643,7 +643,7 @@ namespace OpenActive.NET
       concat(model.extensionFields).
       forEach(field => optionalFieldsMap[field] = false);
     // Create array of optional fields
-    var optionalFields = Object.keys(optionalFieldsMap).
+    let optionalFields = Object.keys(optionalFieldsMap).
       filter(field => optionalFieldsMap[field]);
 
     return {
@@ -656,10 +656,10 @@ namespace OpenActive.NET
   }
 
   sortWithIdAndTypeOnTop (arr) {
-    var firstList = [];
+    let firstList = [];
     if (arr.includes("type")) firstList.push("type");
     if (arr.includes("id")) firstList.push("id");
-    var remainingList = arr.filter(x => x != "id" && x != "type");
+    let remainingList = arr.filter(x => x != "id" && x != "type");
     return firstList.concat(remainingList.sort());
   }
 
