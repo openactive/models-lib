@@ -1,4 +1,13 @@
 import Generator from "../generator";
+import Handlebars from "handlebars";
+import fs from "fs";
+
+const modelTemplate = Handlebars.compile(
+  fs.readFileSync(__dirname + "/model.cs.mustache", "utf8"),
+);
+const enumTemplate = Handlebars.compile(
+  fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8"),
+);
 
 const DATA_MODEL_DOCS_URL_PREFIX = "https://developer.openactive.io/data-model/types/";
 
@@ -11,11 +20,11 @@ class DotNet extends Generator {
         field.order = index + 6;
         return field;
       });
-    let fullModel = this.createFullModel(fullFields, model, models);
+    // let fullModel = this.createFullModel(fullFields, model, models);
     let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model,
       models);
-    let derivedFromName = this.convertToCamelCase(
-      this.getPropNameFromFQP(derivedFrom));
+    // let derivedFromName = this.convertToCamelCase(
+    //   this.getPropNameFromFQP(derivedFrom));
 
     let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
@@ -24,62 +33,31 @@ class DotNet extends Generator {
 
     let doc = this.createModelDoc(model, models);
 
-    return `
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
+    let data = {
+      classDoc: doc,
+      className: this.convertToCamelCase(this.getPropNameFromFQP(model.type)),
+      inherits: inherits,
+      modelType: model.type,
+      fieldList: this.createTableFromFieldList(fullFieldsList, models, enumMap,
+        hasBaseClass),
+    };
 
-namespace OpenActive.NET
-{
-    /// <summary>
-    /// ${doc.join(`\n    /// `)}
-    /// </summary>
-    [DataContract]
-    public partial class ${this.convertToCamelCase(
-      this.getPropNameFromFQP(model.type))} : ${inherits}
-    {
-        /// <summary>
-        /// Gets the name of the type as specified by schema.org.
-        /// </summary>
-        [DataMember(Name = "@type", Order = 1)]
-        public override string Type => "${model.type}";
-
-        ${this.createTableFromFieldList(fullFieldsList, models, enumMap,
-      hasBaseClass)}
-    }
-}
-`;
-
+    return modelTemplate(data);
   }
 
   createEnumFile (typeName, thisEnum) {
-    let betaWarning = thisEnum.extensionPrefix == "beta"
-      ? "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.] \n"
-      : "";
-    return `
-using System.Runtime.Serialization;
+    let doc = this.createEnumDoc(typeName, thisEnum);
 
-namespace OpenActive.NET
-{
-    /// <summary>
-    /// ${(betaWarning + (thisEnum.comment || "")).replace(/\n/g, "\n    /// ")}
-    /// </summary>
-    public enum  ${typeName}
-    {
-        ${thisEnum.values.map(value => this.createEnumValue(value, thisEnum)).
-      join(",")}
-    }
-}
-`;
+    let data = {
+      typeName: typeName,
+      enumDoc: doc,
+      values: thisEnum.values.map(value => ({
+        memberVal: thisEnum.namespace + value,
+        value: value,
+      })),
+    };
 
-  }
-
-  createEnumValue (value, thisEnum) {
-
-    return `
-        [EnumMember(Value = "${thisEnum.namespace + value}")]
-        ${value}`;
+    return enumTemplate(data);
   }
 
   createCommentFromDescription (description) {
@@ -216,7 +194,6 @@ namespace OpenActive.NET
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `SingleValues<${types.join(", ")}>` : types[0];
   }
-
 
   calculateInherits (subClassOf, derivedFrom, model) {
     // Prioritise subClassOf over derivedFrom

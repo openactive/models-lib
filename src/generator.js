@@ -394,6 +394,22 @@ class Generator {
       reduce((acc, val) => acc.concat(val.split("\n")), []);
   }
 
+  createEnumDoc (typeName, thisEnum) {
+    let docLines = [];
+
+    if (thisEnum.extensionPrefix == "beta") {
+      docLines.push("[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]");
+    }
+
+    if (thisEnum.comment) {
+      docLines.push(thisEnum.comment);
+    }
+
+    docLines.
+      filter((val) => val).
+      reduce((acc, val) => acc.concat(val.split("\n")), []);
+  }
+
 
   isArray (prop) {
     return prop.indexOf("ArrayOf") == 0;
