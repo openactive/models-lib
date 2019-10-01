@@ -2,7 +2,7 @@
   "name": "openactive.net.generator",
   "version": "1.0.0",
   "description": "OpenActive model generators",
-  "main": "index.js",
+  "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "app-dev": "babel-node src/app.js",
@@ -19,6 +19,7 @@
     "@babel/polyfill": "^7.6.0",
     "@openactive/data-models": "^1.3.7",
     "babel-preset-env": "^1.7.0",
+    "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
     "handlebars": "^4.4.0",
     "sync-request": "^6.0.0"

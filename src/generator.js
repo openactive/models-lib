@@ -7,8 +7,8 @@ let path = require("path");
 class Generator {
   generateModelClassFiles(dataModelDirectory, extensions) {
     // Empty output directories
-    fsExtra.emptyDirSync(dataModelDirectory + "models");
-    fsExtra.emptyDirSync(dataModelDirectory + "enums");
+    fsExtra.emptyDirSync(dataModelDirectory + "/models");
+    fsExtra.emptyDirSync(dataModelDirectory + "/enums");
 
     // Returns the latest version of the models map
     const models = getModels();
@@ -78,7 +78,7 @@ class Generator {
       .forEach(typeName => {
         let thisEnum = enumMap[typeName];
 
-        let pageName = "enums/" + typeName + ".cs";
+        let pageName = this.getEnumFilename(typeName);
         let pageContent = this.createEnumFile(typeName, thisEnum);
 
         console.log("NAME: " + pageName);

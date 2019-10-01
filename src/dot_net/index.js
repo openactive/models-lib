@@ -27,7 +27,11 @@ class DotNet extends Generator {
   }
 
   getModelFilename(model) {
-    return "models/" + this.getPropNameFromFQP(model.type) + ".cs";
+    return "/models/" + this.getPropNameFromFQP(model.type) + ".cs";
+  }
+
+  getEnumFilename(typeName) {
+    return "/enums/" + typeName + ".cs";
   }
 
   convertToClassName(value) {
