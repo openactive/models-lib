@@ -13,12 +13,23 @@ namespace OpenActive.NET
     [DataContract]
     public partial class {{{className}}} : {{{ inherits }}}
     {
-    /// <summary>
-    /// Gets the name of the type as specified by schema.org.
-    /// </summary>
-    [DataMember(Name = "@type", Order = 1)]
-    public override string Type => "{{{modelType}}}";
+        /// <summary>
+        /// Gets the name of the type as specified by schema.org.
+        /// </summary>
+        [DataMember(Name = "@type", Order = 1)]
+        public override string Type => "{{{modelType}}}";
+{{#fieldList}}
 
-    {{{ fieldList }}}
+
+    {{# description }}
+        /// {{{ . }}}
+    {{/description }}
+    {{# decorators }}
+        {{{ . }}}
+    {{/decorators }}
+    {{# property }}
+        {{{ . }}}
+    {{/property }}
+{{/fieldList}}
     }
 }

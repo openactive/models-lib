@@ -15,7 +15,6 @@ class DotNet extends Generator {
     return this.modelTemplate(data);
   }
 
-
   renderEnum (data) {
     this.enumTemplate = this.enumTemplate ||
       Handlebars.compile(
@@ -23,6 +22,18 @@ class DotNet extends Generator {
       );
 
     return this.enumTemplate(data);
+  }
+
+  getModelFilename (model) {
+    return "models/" + this.getPropNameFromFQP(model.type) + ".cs";
+  }
+
+  convertToClassName (value) {
+    return this.convertToCamelCase(value);
+  }
+
+  convertToFilename (value) {
+    return value;
   }
 
   createModelFile (model, models, extensions, enumMap) {
@@ -48,7 +59,7 @@ class DotNet extends Generator {
 
     let data = {
       classDoc: doc,
-      className: this.convertToCamelCase(this.getPropNameFromFQP(model.type)),
+      className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
       inherits: inherits,
       modelType: model.type,
       fieldList: this.createTableFromFieldList(fullFieldsList, models, enumMap,
@@ -73,10 +84,6 @@ class DotNet extends Generator {
     return this.renderEnum(data);
   }
 
-  getModelFilename (model) {
-    return "models/" + this.getPropNameFromFQP(model.type) + ".cs";
-  }
-
   createCommentFromDescription (description) {
     if (description === null || description === undefined) return "";
     if (description.sections) {
@@ -89,8 +96,8 @@ class DotNet extends Generator {
     }
   }
 
-  getDotNetType (fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    let baseType = this.getDotNetBaseType(fullyQualifiedType, enumMap,
+  getLangType (fullyQualifiedType, enumMap, modelsMap, isExtension) {
+    let baseType = this.getLangBaseType(fullyQualifiedType, enumMap,
       modelsMap,
       isExtension);
     if (this.isArray(fullyQualifiedType)) {
@@ -105,7 +112,7 @@ class DotNet extends Generator {
     }
   }
 
-  getDotNetBaseType (prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getLangBaseType (prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
@@ -151,17 +158,16 @@ class DotNet extends Generator {
       field => field.fieldName != "type" && field.fieldName != "@context").
       map(
         field => this.createPropertyFromField(field, models, enumMap,
-          hasBaseClass)).
-      join("\n");
+          hasBaseClass));
   }
 
   renderJsonConverter (field, propertyType) {
     if (propertyType == "TimeSpan?") {
-      return `\n        [JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
+      return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
     } else if (field.requiredType == "https://schema.org/Time") {
-      return `\n        [JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
+      return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
     } else if (propertyType.indexOf("Values<") > -1) {
-      return `\n        [JsonConverter(typeof(ValuesConverter))]`;
+      return `[JsonConverter(typeof(ValuesConverter))]`;
     } else {
       return "";
     }
@@ -177,19 +183,35 @@ class DotNet extends Generator {
     let propertyType = this.createTypeString(field, models, enumMap,
       isExtension);
     let jsonConverter = this.renderJsonConverter(field, propertyType);
-    return !field.obsolete ? `
-        /// ${this.createDescriptionWithExample(field).
-      replace(/\n/g, "\n        /// ")}
-        [DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${isExtension
-      ? 1000 + field.order
-      : field.order})]${jsonConverter}
-        public ${!isExtension && hasBaseClass && (isNew || field.override)
-      ? "new "
-      : ""}virtual ${propertyType} ${propertyName} { get; set; }
-` : `
-        [Obsolete("This property is disinherited in this type, and must not be used.", true)]
-        public override ${propertyType} ${propertyName} { get; set; }
-`;
+
+    if (field.obsolete) {
+      return {
+        description: this.createDescriptionWithExample(field),
+        decorators: [
+          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`,
+        ],
+        property: `public override ${propertyType} ${propertyName} { get; set; }`,
+      };
+    } else {
+      let methodType = "";
+      if (!isExtension && hasBaseClass && (isNew || field.override)) {
+        methodType = "new ";
+      }
+
+      let order = field.order;
+      if (isExtension) {
+        order += 1000;
+      }
+
+      return {
+        description: this.createDescriptionWithExample(field),
+        decorators: [
+          `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
+          jsonConverter,
+        ].filter((val) => val),
+        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `,
+      };
+    }
   }
 
   createTypeString (field, models, enumMap, isExtension) {
@@ -200,7 +222,7 @@ class DotNet extends Generator {
       filter(type => type !== undefined);
 
     types = types.map(
-      fullyQualifiedType => this.getDotNetType(fullyQualifiedType, enumMap,
+      fullyQualifiedType => this.getLangType(fullyQualifiedType, enumMap,
         models,
         isExtension));
 

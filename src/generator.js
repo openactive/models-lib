@@ -459,7 +459,7 @@ class Generator {
         lines.push("</example>");
       }
 
-      return this.cleanDocLines(lines).join("\n");
+      return this.cleanDocLines(lines);
     }
   }
 
