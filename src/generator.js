@@ -475,6 +475,14 @@ class Generator {
         (isNumber ? code : `"` + code + `"`) + "\n</code>";
     }
   }
+
+  hasBaseClass (subClassOf, derivedFrom) {
+    if (subClassOf || !derivedFrom) {
+      return true;
+    }
+
+    return !this.includedInSchema(derivedFrom);
+  }
 }
 
 export default Generator;

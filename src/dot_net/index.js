@@ -53,7 +53,7 @@ class DotNet extends Generator {
     let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
-    let hasBaseClass = inherits !== "Schema.NET.JsonLdObject";
+    let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
 
     let doc = this.createModelDoc(model, models);
 
