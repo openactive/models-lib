@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "app-dev": "babel-node src/app.js",
     "app": "node dist/app.js",
-    "build": "babel src --out-dir dist"
+    "build": "babel src --out-dir dist",
+    "prettier": "prettier --check \"src/**/*.js\"",
+    "prettier:write": "prettier --write \"src/**/*.js\""
   },
   "keywords": [],
   "author": "",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@babel/cli": "^7.6.2",
     "@babel/core": "^7.6.2",
-    "@babel/preset-env": "^7.6.2"
+    "@babel/preset-env": "^7.6.2",
+    "prettier": "^1.18.2"
   }
 }

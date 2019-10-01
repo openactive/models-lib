@@ -2,44 +2,49 @@ import Generator from "../generator";
 import Handlebars from "handlebars";
 import fs from "fs";
 
-const DATA_MODEL_DOCS_URL_PREFIX = "https://developer.openactive.io/data-model/types/";
+const DATA_MODEL_DOCS_URL_PREFIX =
+  "https://developer.openactive.io/data-model/types/";
 
 class DotNet extends Generator {
-
-  renderModel (data) {
-    this.modelTemplate = this.modelTemplate ||
+  renderModel(data) {
+    this.modelTemplate =
+      this.modelTemplate ||
       Handlebars.compile(
-        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8"),
+        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8")
       );
 
     return this.modelTemplate(data);
   }
 
-  renderEnum (data) {
-    this.enumTemplate = this.enumTemplate ||
+  renderEnum(data) {
+    this.enumTemplate =
+      this.enumTemplate ||
       Handlebars.compile(
-        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8"),
+        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8")
       );
 
     return this.enumTemplate(data);
   }
 
-  getModelFilename (model) {
+  getModelFilename(model) {
     return "models/" + this.getPropNameFromFQP(model.type) + ".cs";
   }
 
-  convertToClassName (value) {
+  convertToClassName(value) {
     return this.convertToCamelCase(value);
   }
 
-  convertToFilename (value) {
+  convertToFilename(value) {
     return value;
   }
 
-  getLangType (fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    let baseType = this.getLangBaseType(fullyQualifiedType, enumMap,
+  getLangType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
+    let baseType = this.getLangBaseType(
+      fullyQualifiedType,
+      enumMap,
       modelsMap,
-      isExtension);
+      isExtension
+    );
     if (this.isArray(fullyQualifiedType)) {
       // Remove ? from end of type if it's a list
       if (baseType.slice(-1) == "?") {
@@ -52,7 +57,7 @@ class DotNet extends Generator {
     }
   }
 
-  getLangBaseType (prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
@@ -93,7 +98,7 @@ class DotNet extends Generator {
     }
   }
 
-  renderJsonConverter (field, propertyType) {
+  renderJsonConverter(field, propertyType) {
     if (propertyType == "TimeSpan?") {
       return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
     } else if (field.requiredType == "https://schema.org/Time") {
@@ -105,24 +110,28 @@ class DotNet extends Generator {
     }
   }
 
-  createPropertyFromField (field, models, enumMap, hasBaseClass) {
+  createPropertyFromField(field, models, enumMap, hasBaseClass) {
     let memberName = field.extensionPrefix
       ? `${field.extensionPrefix}:${field.fieldName}`
       : field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createTypeString(field, models, enumMap,
-      isExtension);
+    let propertyType = this.createTypeString(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     if (field.obsolete) {
       return {
         description: this.createDescriptionWithExample(field),
         decorators: [
-          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`,
+          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
         ],
-        property: `public override ${propertyType} ${propertyName} { get; set; }`,
+        property: `public override ${propertyType} ${propertyName} { get; set; }`
       };
     } else {
       let methodType = "";
@@ -139,24 +148,24 @@ class DotNet extends Generator {
         description: this.createDescriptionWithExample(field),
         decorators: [
           `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
-          jsonConverter,
-        ].filter((val) => val),
-        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `,
+          jsonConverter
+        ].filter(val => val),
+        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `
       };
     }
   }
 
-  createTypeString (field, models, enumMap, isExtension) {
-    let types = [].concat(field.alternativeTypes).
-      concat(field.requiredType).
-      concat(field.alternativeModels).
-      concat(field.model).
-      filter(type => type !== undefined);
+  createTypeString(field, models, enumMap, isExtension) {
+    let types = []
+      .concat(field.alternativeTypes)
+      .concat(field.requiredType)
+      .concat(field.alternativeModels)
+      .concat(field.model)
+      .filter(type => type !== undefined);
 
-    types = types.map(
-      fullyQualifiedType => this.getLangType(fullyQualifiedType, enumMap,
-        models,
-        isExtension));
+    types = types.map(fullyQualifiedType =>
+      this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
+    );
 
     if (types.length == 0) {
       throw new Error("No type found for field: " + field.fieldName);
@@ -166,11 +175,12 @@ class DotNet extends Generator {
     return types.length > 1 ? `SingleValues<${types.join(", ")}>` : types[0];
   }
 
-  calculateInherits (subClassOf, derivedFrom, model) {
+  calculateInherits(subClassOf, derivedFrom, model) {
     // Prioritise subClassOf over derivedFrom
     if (subClassOf) {
       let subClassOfName = this.convertToCamelCase(
-        this.getPropNameFromFQP(subClassOf));
+        this.getPropNameFromFQP(subClassOf)
+      );
       if (this.includedInSchema(subClassOf)) {
         return `Schema.NET.${subClassOfName}`;
       } else {
@@ -178,7 +188,8 @@ class DotNet extends Generator {
       }
     } else if (derivedFrom) {
       let derivedFromName = this.convertToCamelCase(
-        this.getPropNameFromFQP(derivedFrom));
+        this.getPropNameFromFQP(derivedFrom)
+      );
       if (this.includedInSchema(derivedFrom)) {
         return `Schema.NET.${derivedFromName}`;
       } else {
