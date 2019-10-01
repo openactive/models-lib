@@ -36,66 +36,6 @@ class DotNet extends Generator {
     return value;
   }
 
-  createModelFile (model, models, extensions, enumMap) {
-    let fullFields = this.obsoleteNotInSpecFields(model, models);
-    let fullFieldsList = Object.values(fullFields).
-      sort(this.compareFields).
-      map((field, index) => {
-        field.order = index + 6;
-        return field;
-      });
-    // let fullModel = this.createFullModel(fullFields, model, models);
-    let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model,
-      models);
-    // let derivedFromName = this.convertToCamelCase(
-    //   this.getPropNameFromFQP(derivedFrom));
-
-    let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
-
-    // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
-    let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
-
-    let doc = this.createModelDoc(model, models);
-
-    let data = {
-      classDoc: doc,
-      className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
-      inherits: inherits,
-      modelType: model.type,
-      fieldList: this.createTableFromFieldList(fullFieldsList, models, enumMap,
-        hasBaseClass),
-    };
-
-    return this.renderModel(data);
-  }
-
-  createEnumFile (typeName, thisEnum) {
-    let doc = this.createEnumDoc(typeName, thisEnum);
-
-    let data = {
-      typeName: typeName,
-      enumDoc: doc,
-      values: thisEnum.values.map(value => ({
-        memberVal: thisEnum.namespace + value,
-        value: value,
-      })),
-    };
-
-    return this.renderEnum(data);
-  }
-
-  createCommentFromDescription (description) {
-    if (description === null || description === undefined) return "";
-    if (description.sections) {
-      return description.sections.map(
-        section => (section.title && section.paragraphs ? `
-## **` + section.title + `**
-` + section.paragraphs.join("\n") : "")).join("\n\n") + "\n";
-    } else {
-      return "";
-    }
-  }
-
   getLangType (fullyQualifiedType, enumMap, modelsMap, isExtension) {
     let baseType = this.getLangBaseType(fullyQualifiedType, enumMap,
       modelsMap,
@@ -151,14 +91,6 @@ class DotNet extends Generator {
           throw new Error("Unrecognised type or enum referenced: " + typeName);
         }
     }
-  }
-
-  createTableFromFieldList (fieldList, models, enumMap, hasBaseClass) {
-    return fieldList.filter(
-      field => field.fieldName != "type" && field.fieldName != "@context").
-      map(
-        field => this.createPropertyFromField(field, models, enumMap,
-          hasBaseClass));
   }
 
   renderJsonConverter (field, propertyType) {
