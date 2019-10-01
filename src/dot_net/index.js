@@ -2,16 +2,29 @@ import Generator from "../generator";
 import Handlebars from "handlebars";
 import fs from "fs";
 
-const modelTemplate = Handlebars.compile(
-  fs.readFileSync(__dirname + "/model.cs.mustache", "utf8"),
-);
-const enumTemplate = Handlebars.compile(
-  fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8"),
-);
-
 const DATA_MODEL_DOCS_URL_PREFIX = "https://developer.openactive.io/data-model/types/";
 
 class DotNet extends Generator {
+
+  renderModel (data) {
+    this.modelTemplate = this.modelTemplate ||
+      Handlebars.compile(
+        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8"),
+      );
+
+    return this.modelTemplate(data);
+  }
+
+
+  renderEnum (data) {
+    this.enumTemplate = this.enumTemplate ||
+      Handlebars.compile(
+        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8"),
+      );
+
+    return this.enumTemplate(data);
+  }
+
   createModelFile (model, models, extensions, enumMap) {
     let fullFields = this.obsoleteNotInSpecFields(model, models);
     let fullFieldsList = Object.values(fullFields).
@@ -42,7 +55,7 @@ class DotNet extends Generator {
         hasBaseClass),
     };
 
-    return modelTemplate(data);
+    return this.renderModel(data);
   }
 
   createEnumFile (typeName, thisEnum) {
@@ -57,7 +70,11 @@ class DotNet extends Generator {
       })),
     };
 
-    return enumTemplate(data);
+    return this.renderEnum(data);
+  }
+
+  getModelFilename (model) {
+    return "models/" + this.getPropNameFromFQP(model.type) + ".cs";
   }
 
   createCommentFromDescription (description) {

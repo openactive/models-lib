@@ -41,7 +41,7 @@ class Generator {
       let model = models[typeName];
       if (typeName != "undefined") { //ignores "model_list.json" (which appears to be ignored everywhere else)
 
-        let pageName = "models/" + this.getPropNameFromFQP(model.type) + ".cs";
+        let pageName = this.getModelFilename(model);
         let pageContent = this.createModelFile(model, models, extensions,
           enumMap);
 
@@ -306,7 +306,6 @@ class Generator {
     return compare(x, y);
   }
 
-
   createFullModel (fields, partialModel, models) {
     // Ensure each input prop exists
     let model = {
@@ -365,6 +364,14 @@ class Generator {
     return url.indexOf("//schema.org") > -1 || url.indexOf("schema:") == 0;
   }
 
+  cleanDocLines (docLines) {
+    if (!docLines) { return ""; }
+
+    return docLines.
+      filter((val) => val).
+      reduce((acc, val) => acc.concat(val.split("\n")), []);
+  }
+
   createModelDoc (model, models) {
     let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model,
       models);
@@ -389,27 +396,23 @@ class Generator {
       docLines.push(text);
     }
 
-    return docLines.
-      filter((val) => val).
-      reduce((acc, val) => acc.concat(val.split("\n")), []);
+    return this.cleanDocLines(docLines);
   }
 
   createEnumDoc (typeName, thisEnum) {
     let docLines = [];
 
     if (thisEnum.extensionPrefix == "beta") {
-      docLines.push("[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]");
+      docLines.push(
+        "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]");
     }
 
     if (thisEnum.comment) {
       docLines.push(thisEnum.comment);
     }
 
-    docLines.
-      filter((val) => val).
-      reduce((acc, val) => acc.concat(val.split("\n")), []);
+    return this.cleanDocLines(docLines);
   }
-
 
   isArray (prop) {
     return prop.indexOf("ArrayOf") == 0;
@@ -441,14 +444,22 @@ class Generator {
         this.renderCode(field.requiredContent, field.fieldName,
           field.requiredType);
     } else {
-      let betaWarning = field.extensionPrefix == "beta"
-        ? "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.] \n"
-        : "";
-      return `<summary>\n${betaWarning}${field.description.join(
-        " \n")}\n</summary>`
-        + (field.example ? "\n<example>\n" +
-          this.renderCode(field.example, field.fieldName, field.requiredType) +
-          "\n</example>" : "");
+      let lines = [
+        '<summary>',
+        field.extensionPrefix == "beta" &&
+        "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
+          ...field.description,
+        '</summary>'
+      ];
+      lines.concat(field.description);
+      if (field.example) {
+        lines.push("<example>");
+        lines.push(
+          this.renderCode(field.example, field.fieldName, field.requiredType));
+        lines.push("</example>");
+      }
+
+      return this.cleanDocLines(lines).join("\n");
     }
   }
 
