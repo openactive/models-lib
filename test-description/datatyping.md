@@ -349,6 +349,14 @@ _Slots example_
 
 *   no null values are found in output, even when explicitly supplied in input
 
+**Empty strings are absent**
+
+*   no empty strings are found in the output, even when explicitly supplied in input
+
+**Empty arrays are absent**
+
+*   no empty arrays are found in the output, even when explicitly supplied in input
+
 **Simple datatypes are correct**
 
 _SessionSeries example_
