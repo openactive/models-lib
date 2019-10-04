@@ -8,7 +8,7 @@
 ```            
 {
 
-  “@context”: "https://openactive.io/",
+  "@context": "https://openactive.io/",
 
    "type":"SessionSeries",
 

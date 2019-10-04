@@ -10,7 +10,7 @@
 ```
 {
 
-  “@context”: "https://openactive.io/",
+  "@context": "https://openactive.io/",
 
    "type":"SessionSeries",
 
@@ -248,13 +248,13 @@
 
    "name":"Tai chi Class",
 
-   “activity”:{
+   "activity”:{
 
-	“type”: “Concept”,
+	"type”: "Concept”,
 
-            “prefLabel”: “Tai Chi”,
+            "prefLabel”: "Tai Chi”,
 
-	“id”:”https://activity-list-editor.openactive.io/_c16df6ed-a4a0-4275-a8c3-1c8cff56856f”
+	"id”:”https://activity-list-editor.openactive.io/_c16df6ed-a4a0-4275-a8c3-1c8cff56856f”
 
 	},
 
