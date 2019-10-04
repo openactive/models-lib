@@ -7,6 +7,7 @@
 
 ## SessionSeries example
 
+```
 {
 
    “@context”: "https://openactive.io/",
@@ -210,10 +211,11 @@
    "orderProposalVersion":"https://pimlico-fencing-club/orders/confirmed/12345"
 
 }
-
+```
 
 ## Slots example
 
+```
 {
 
    "@context":"https://openactive.io/",
@@ -325,15 +327,13 @@
    ]
 
 }
-
+```
 
 # Tests
 
 **“type” property is present and populated correctly**
 
 _SessionSeries example_
-
-
 
 *   Type of top-level object is “Order”
 *   Type of OrderItem is “ScheduledSession”
@@ -342,14 +342,10 @@ _SessionSeries example_
 
 _Slots example_
 
-
-
 *   Type of FacilityUse.event[0] is “Slot”
 *   Type of FacilityUse.location.address is “PostalAddress”
 
 **Null values are absent**
-
-
 
 *   no null values are found in output, even when explicitly supplied in input
 
@@ -378,11 +374,10 @@ _SessionSeries example_
 *   “activity” is can be cast to a Concept
 *   “seller” can be cast to an Organization
 *   “bookingService” can be cast to a BookingService
-*   “orderItem” can be cast to an OrderItem 
+*   “orderItem” can be cast to an OrderItem
 
 _Slots example_
 
 
 
 *   “offer” can be cast to an Offer
-

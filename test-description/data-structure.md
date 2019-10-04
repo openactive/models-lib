@@ -7,10 +7,10 @@
 
 
 ## Order Example
-
+```
 {
 
-   “@context”: "https://openactive.io/", 
+   “@context”: "https://openactive.io/",
 
    "type":"Order",
 
@@ -212,10 +212,10 @@
    "orderProposalVersion":"https://pimlico-fencing-club/orders/confirmed/12345"
 
 }
-
+```
 
 ## Slots Example
-
+```
 {
 
    "@context":"https://openactive.io/",
@@ -327,10 +327,10 @@
    ]
 
 }
-
+```
 
 ## Event example
-
+```
 {
 
   "@context":"https://openactive.io/",
@@ -396,15 +396,12 @@
       }
 
    }
-
 }
-
+```
 
 # Tests
 
 **Correctness of global structure**
-
-
 
 *   Object is single, not array
 
@@ -468,5 +465,3 @@ _Event example_
     *   duration
     *   organizer
     *   location
-
-

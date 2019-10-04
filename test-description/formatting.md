@@ -5,11 +5,10 @@
 
 # JSON Object
 
-            
-
+```            
 {
 
-  “@context”: "https://openactive.io/", 
+  “@context”: "https://openactive.io/",
 
    "type":"SessionSeries",
 
@@ -112,15 +111,12 @@
       }]
 
    }
-
 }
-
+```
 
 # Tests
 
 **Date and time in correct format**
-
-
 
 *   SessionSeries.subEvent.startDate in correct ISO-8601 format
 *   SessionSeries.subEvent.endDate in correct ISO-8601 format
@@ -130,8 +126,4 @@
 
 **URLs**
 
-
-
 *   SessionSeries.id, SessionSeries.activity, and SessionSeries.subEvent.url are both correctly-formatted URLs
-
-
