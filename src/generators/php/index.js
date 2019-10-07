@@ -1,4 +1,4 @@
-import Generator from "../generator";
+import Generator from "../../generator";
 import Handlebars from "handlebars";
 import fs from "fs";
 
@@ -10,7 +10,7 @@ class DotNet extends Generator {
     this.modelTemplate =
       this.modelTemplate ||
       Handlebars.compile(
-        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8")
+        fs.readFileSync(__dirname + "/model.php.mustache", "utf8")
       );
 
     return this.modelTemplate(data);
@@ -20,18 +20,31 @@ class DotNet extends Generator {
     this.enumTemplate =
       this.enumTemplate ||
       Handlebars.compile(
-        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8")
+        fs.readFileSync(__dirname + "/enum.php.mustache", "utf8")
       );
 
     return this.enumTemplate(data);
   }
 
+  getDirs() {
+    return [
+      'models/',
+      'models/SchemaOrg/',
+      'models/OA/',
+      'enums/'
+    ];
+  }
+
   getModelFilename(model) {
-    return "/models/" + this.getPropNameFromFQP(model.type) + ".cs";
+    if (this.includedInSchema(model.subClassOf)) {
+      return "/Models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php";
+    }
+
+    return "/Models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
   }
 
   getEnumFilename(typeName) {
-    return "/enums/" + typeName + ".cs";
+    return "/enums/" + typeName + ".php";
   }
 
   convertToClassName(value) {
@@ -129,9 +142,14 @@ class DotNet extends Generator {
     );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
+    let obj = {
+      propName: field.fieldName,
+      description: this.createDescriptionWithExample(field)
+    };
+
     if (field.obsolete) {
       return {
-        description: this.createDescriptionWithExample(field),
+        ...obj,
         decorators: [
           `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
         ],
@@ -149,7 +167,7 @@ class DotNet extends Generator {
       }
 
       return {
-        description: this.createDescriptionWithExample(field),
+        ...obj,
         decorators: [
           `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
           jsonConverter
@@ -186,23 +204,24 @@ class DotNet extends Generator {
         this.getPropNameFromFQP(subClassOf)
       );
       if (this.includedInSchema(subClassOf)) {
-        return `Schema.NET.${subClassOfName}`;
+        return `\\OpenActive\\Models\\SchemaOrg\\${subClassOfName}`;
       } else {
-        return `${subClassOfName}`;
+        return `\\OpenActive\\Models\\${subClassOfName}`;
       }
     } else if (derivedFrom) {
       let derivedFromName = this.convertToCamelCase(
         this.getPropNameFromFQP(derivedFrom)
       );
       if (this.includedInSchema(derivedFrom)) {
-        return `Schema.NET.${derivedFromName}`;
+        return `\\OpenActive\\Models\\${derivedFromName}`;
       } else {
         // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-        return `Schema.NET.JsonLdObject`;
+        return `\\OpenActive\\BaseModel`;
       }
     } else {
       // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-      throw new Error("No base class specified for: " + model.type);
+      // throw new Error("No base class specified for: " + model.type);
+      return 'None';
     }
   }
 }

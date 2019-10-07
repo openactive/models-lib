@@ -5,6 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "babel-node": "babel-node",
     "app-dev": "babel-node src/app.js",
     "app": "node dist/app.js",
     "build": "babel src --out-dir dist",
@@ -22,6 +23,7 @@
     "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
     "handlebars": "^4.4.0",
+    "schema-dts-gen": "^0.4.2",
     "sync-request": "^6.0.0"
   },
   "devDependencies": {

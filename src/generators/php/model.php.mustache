@@ -1,0 +1,29 @@
+<?php
+namespace OpenActive\Model;
+
+/** <summary>
+{{#classDoc}}
+ * {{{ . }}}
+{{/classDoc}}
+ * </summary>
+**/
+class {{{className}}} extends {{{ inherits }}}
+{
+
+{{#fieldList}}
+    protected ${{{propName}}};
+{{/fieldList}}
+
+{{#fieldList}}
+    public function get{{{propName}}}()
+    {
+        return $this->{{{propName}}};
+    }
+
+    public function set{{{propName}}}(${{{propName}}})
+    {
+        return $this->{{{propName}}} = ${{{propName}}};
+    }
+
+{{/fieldList}}
+}

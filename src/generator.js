@@ -1,17 +1,19 @@
-const { getModels, getEnums, getMetaData } = require("@openactive/data-models");
+const {getModels, getEnums, getMetaData} = require("@openactive/data-models");
 let fs = require("fs");
 let fsExtra = require("fs-extra");
 let request = require("sync-request");
 let path = require("path");
 
 class Generator {
-  generateModelClassFiles(dataModelDirectory, extensions) {
+  generateModelClassFiles (dataModelDirectory, extensions) {
     // Empty output directories
-    fsExtra.emptyDirSync(dataModelDirectory + "/models");
-    fsExtra.emptyDirSync(dataModelDirectory + "/enums");
+    //
+    // fsExtra.emptyDirSync(dataModelDirectory + "/models");
+    // fsExtra.emptyDirSync(dataModelDirectory + "/enums");
 
     // Returns the latest version of the models map
     const models = getModels();
+
     const enumMap = getEnums();
     const namespaces = getMetaData().namespaces;
 
@@ -21,11 +23,28 @@ class Generator {
       if (!extension) throw "Error loading extension: " + prefix;
 
       extensions[prefix].graph = extension["@graph"];
-      extension["@context"].forEach(context => {
-        if (typeof context === "object") {
+      console.log(extension["@context"]);
+
+      // extension["@context"].forEach(context => {
+      //   if (typeof context === "object") {
+      //     Object.assign(namespaces, context);
+      //   }
+      // });
+
+      function _context(context) {
+        if (Array.isArray(context)) {
+          context.forEach(context => {
+            _context(context)
+          });
+        }
+        else if (typeof context === "object") {
           Object.assign(namespaces, context);
         }
-      });
+      }
+
+      _context(extension["@context"]);
+
+      console.log(namespaces);
     });
 
     Object.keys(extensions).forEach(prefix => {
@@ -35,15 +54,22 @@ class Generator {
         models,
         extension.url,
         prefix,
-        namespaces
+        namespaces,
       );
       this.augmentEnumsWithExtension(
         extension.graph,
         enumMap,
         extension.url,
         prefix,
-        namespaces
+        namespaces,
       );
+    });
+
+    fs.writeFileSync('models.json', JSON.stringify(models, null, 2));
+    console.log(Object.keys(models));
+
+    this.getDirs().forEach(dir => {
+      fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
     });
 
     Object.keys(models).forEach(typeName => {
@@ -56,7 +82,7 @@ class Generator {
           model,
           models,
           extensions,
-          enumMap
+          enumMap,
         );
 
         console.log("NAME: " + pageName);
@@ -73,9 +99,9 @@ class Generator {
     });
 
     // Converts the enum map into an array for ease of use
-    Object.keys(enumMap)
-      .filter(typeName => !this.includedInSchema(enumMap[typeName].namespace))
-      .forEach(typeName => {
+    Object.keys(enumMap).
+      // filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
+      forEach(typeName => {
         let thisEnum = enumMap[typeName];
 
         let pageName = this.getEnumFilename(typeName);
@@ -94,11 +120,11 @@ class Generator {
       });
   }
 
-  createModelFile(model, models, extensions, enumMap) {
+  createModelFile (model, models, extensions, enumMap) {
     let fullFields = this.obsoleteNotInSpecFields(model, models);
-    let fullFieldsList = Object.values(fullFields)
-      .sort(this.compareFields)
-      .map((field, index) => {
+    let fullFieldsList = Object.values(fullFields).
+      sort(this.compareFields).
+      map((field, index) => {
         field.order = index + 6;
         return field;
       });
@@ -106,7 +132,7 @@ class Generator {
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
       model,
-      models
+      models,
     );
     // let derivedFromName = this.convertToCamelCase(
     //   this.getPropNameFromFQP(derivedFrom));
@@ -127,14 +153,14 @@ class Generator {
         fullFieldsList,
         models,
         enumMap,
-        hasBaseClass
-      )
+        hasBaseClass,
+      ),
     };
 
     return this.renderModel(data);
   }
 
-  createEnumFile(typeName, thisEnum) {
+  createEnumFile (typeName, thisEnum) {
     let doc = this.createEnumDoc(typeName, thisEnum);
 
     let data = {
@@ -142,100 +168,178 @@ class Generator {
       enumDoc: doc,
       values: thisEnum.values.map(value => ({
         memberVal: thisEnum.namespace + value,
-        value: value
-      }))
+        value: value,
+      })),
     };
 
     return this.renderEnum(data);
   }
 
-  createCommentFromDescription(description) {
+  createCommentFromDescription (description) {
     if (description === null || description === undefined) return "";
     if (description.sections) {
       return (
-        description.sections
-          .map(section =>
-            section.title && section.paragraphs
-              ? `
+        description.sections.map(section =>
+          section.title && section.paragraphs
+            ? `
 ## **` +
-                section.title +
-                `**
+            section.title +
+            `**
 ` +
-                section.paragraphs.join("\n")
-              : ""
-          )
-          .join("\n\n") + "\n"
+            section.paragraphs.join("\n")
+            : "",
+        ).join("\n\n") + "\n"
       );
     } else {
       return "";
     }
   }
 
-  createTableFromFieldList(fieldList, models, enumMap, hasBaseClass) {
-    return fieldList
-      .filter(
-        field => field.fieldName != "type" && field.fieldName != "@context"
-      )
-      .map(field =>
-        this.createPropertyFromField(field, models, enumMap, hasBaseClass)
-      );
+  createTableFromFieldList (fieldList, models, enumMap, hasBaseClass) {
+    return fieldList.filter(
+      field => field.fieldName != "type" && field.fieldName != "@context",
+    ).map(field =>
+      this.createPropertyFromField(field, models, enumMap, hasBaseClass),
+    );
   }
 
-  augmentWithExtension(
+  augmentWithExtension (
     extModelGraph,
     models,
     extensionUrl,
     extensionPrefix,
-    namespaces
+    namespaces,
   ) {
+
+    extModelGraph = extModelGraph.map((node) => {
+
+      function _handleValue(item) {
+        let val = item;
+        if (item['@id']) {
+          val = item['@id'];
+        }
+
+        if (!val) {
+          return;
+        }
+
+        return val.replace('http://schema.org/', 'schema:')
+      }
+
+      function _handleArray(array) {
+        if (!Array.isArray(array)) {
+          array = [array];
+        }
+
+        return array.map(_handleValue);
+      }
+
+      if (node['@id']) {
+        node.id = _handleValue(node['@id']);
+      }
+      if (node['@type']) {
+        let val = node['@type'];
+        if (Array.isArray(val)) {
+          val = val[0];
+        }
+
+        node.type = val.replace(/^rdfs?:/, '');
+      }
+      if (node['rdfs:comment']) {
+        node.comment = node['rdfs:comment'];
+      }
+      if (node['rdfs:label']) {
+        node.label = node['rdfs:label'];
+      }
+      if (node['rdfs:subClassOf']) {
+        node.subClassOf = _handleArray(node['rdfs:subClassOf']);
+      }
+      if (node['rdfs:rangeIncludes']) {
+        node.rangeIncludes = _handleArray(node['rdfs:rangeIncludes']);
+      }
+
+      function handleUrlField(name) {
+        let value = node['http://schema.org/'+name];
+
+        if (!value) {
+          return;
+        }
+
+        value =  _handleArray(value);
+
+        node[name] = value;
+      }
+
+      handleUrlField('rangeIncludes');
+      handleUrlField('domainIncludes');
+
+      return node;
+    });
+
+
     // Add classes first
     extModelGraph.forEach(node => {
+
+      if (!node.subClassOf) {
+        node.subClassOf = [];
+      }
+
       if (
         node.type === "Class" &&
         Array.isArray(node.subClassOf) &&
         node.subClassOf[0] != "schema:Enumeration"
       ) {
         // Only include subclasses for either OA or schema.org classes
-        let subClasses = node.subClassOf.filter(
-          prop =>
-            models[this.getPropNameFromFQP(prop)] || this.includedInSchema(prop)
-        );
+        // let subClasses = node.subClassOf.filter(
+        //   prop =>
+        //     models[this.getPropNameFromFQP(prop)] || this.includedInSchema(prop),
+        // );
+
+        let subClasses = node.subClassOf;
 
         let model =
           subClasses.length > 0
             ? {
-                type: node.id,
-                // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
-                subClassOf: models[this.getPropNameFromFQP(subClasses[0])]
-                  ? "#" + this.getPropNameFromFQP(subClasses[0])
-                  : this.expandPrefix(subClasses[0], false, namespaces)
-              }
+              type: node.id,
+              // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
+              subClassOf: models[this.getPropNameFromFQP(subClasses[0])]
+                ? "#" + this.getPropNameFromFQP(subClasses[0])
+                : this.expandPrefix(subClasses[0], false, namespaces),
+            }
             : {
-                type: node.id
-              };
-
-        models[this.getPropNameFromFQP(node.id)] = model;
+              type: node.id,
+            };
+        // models[this.getPropNameFromFQP(node.id)] = model;
+        models[node.id] = model;
       }
     });
 
     // Add properties to classes
     extModelGraph.forEach(node => {
       if (node.type === "Property") {
+        if (!node.rangeIncludes) {
+          node.rangeIncludes = [];
+        }
+        if (!node.domainIncludes) {
+          node.domainIncludes = [];
+        }
+
+
         let field = {
           fieldName: this.getPropNameFromFQP(node.id),
           alternativeTypes: node.rangeIncludes.map(type =>
-            this.expandPrefix(type, node.isArray, namespaces)
+            this.expandPrefix(type, node.isArray, namespaces),
           ),
           description: [
             node.comment +
-              (node.githubIssue
-                ? "\n\nIf you are using this property, please join the discussion at proposal " +
-                  this.renderGitHubIssueLink(node.githubIssue) +
-                  "."
-                : "")
+            (node.githubIssue
+              ? "\n\nIf you are using this property, please join the discussion at proposal " +
+              this.renderGitHubIssueLink(node.githubIssue) +
+              "."
+              : ""),
           ],
           example: node.example,
-          extensionPrefix: extensionPrefix
+          extensionPrefix: extensionPrefix,
         };
         node.domainIncludes.forEach(prop => {
           let model = models[this.getPropNameFromFQP(prop)];
@@ -250,12 +354,12 @@ class Generator {
     });
   }
 
-  augmentEnumsWithExtension(
+  augmentEnumsWithExtension (
     extModelGraph,
     enumMap,
     extensionUrl,
     extensionPrefix,
-    namespaces
+    namespaces,
   ) {
     extModelGraph.forEach(node => {
       if (
@@ -266,16 +370,15 @@ class Generator {
         enumMap[node.label] = {
           namespace: namespaces[extensionPrefix],
           comment: node.comment,
-          values: extModelGraph
-            .filter(n => n.type == node.id)
-            .map(n => n.label),
-          extensionPrefix: extensionPrefix
+          values: extModelGraph.filter(n => n.type == node.id).
+            map(n => n.label),
+          extensionPrefix: extensionPrefix,
         };
       }
     });
   }
 
-  expandPrefix(prop, isArray, namespaces) {
+  expandPrefix (prop, isArray, namespaces) {
     if (prop.lastIndexOf(":") > -1) {
       let propNs = prop.substring(0, prop.indexOf(":"));
       let propName = prop.substring(prop.indexOf(":") + 1);
@@ -293,15 +396,15 @@ class Generator {
     } else return prop;
   }
 
-  renderGitHubIssueLink(url) {
+  renderGitHubIssueLink (url) {
     let splitUrl = url.split("/");
     let issueNumber = splitUrl[splitUrl.length - 1];
     return "[#" + issueNumber + "](" + url + ")";
   }
 
-  getExtension(extensionUrl) {
+  getExtension (extensionUrl) {
     let response = request("GET", extensionUrl, {
-      accept: "application/ld+json"
+      accept: "application/ld+json",
     });
     if (response && response.statusCode == 200) {
       let body = JSON.parse(response.body);
@@ -311,7 +414,7 @@ class Generator {
     }
   }
 
-  getParentModel(model, models) {
+  getParentModel (model, models) {
     if (model.subClassOf && model.subClassOf.indexOf("#") == 0) {
       return models[model.subClassOf.substring(1)];
     } else {
@@ -319,7 +422,7 @@ class Generator {
     }
   }
 
-  getPropertyWithInheritance(prop, model, models) {
+  getPropertyWithInheritance (prop, model, models) {
     if (model[prop]) return model[prop];
 
     let parentModel = this.getParentModel(model, models);
@@ -330,19 +433,19 @@ class Generator {
     return null;
   }
 
-  getMergedPropertyWithInheritance(prop, model, models) {
+  getMergedPropertyWithInheritance (prop, model, models) {
     let thisProp = model[prop] || [];
     let parentModel = this.getParentModel(model, models);
     if (parentModel) {
       return thisProp.concat(
-        this.getMergedPropertyWithInheritance(prop, parentModel, models)
+        this.getMergedPropertyWithInheritance(prop, parentModel, models),
       );
     } else {
       return thisProp;
     }
   }
 
-  obsoleteNotInSpecFields(model, models) {
+  obsoleteNotInSpecFields (model, models) {
     let augFields = Object.assign({}, model.fields);
 
     let parentModel = this.getParentModel(model, models);
@@ -358,12 +461,13 @@ class Generator {
             augFields[field].obsolete = true;
           }
         } else {
+          return;
           throw new Error(
-            'notInSpec field "' +
-              field +
-              '" not found in parent for model "' +
-              model.type +
-              '"'
+            "notInSpec field \"" +
+            field +
+            "\" not found in parent for model \"" +
+            model.type +
+            "\"",
           );
         }
       });
@@ -380,7 +484,7 @@ class Generator {
         thisField.derivedFromSchema = true;
       }
 
-      if (parentModel && parentModel.fields[field]) {
+      if (parentModel && parentModel.fields && parentModel.fields[field]) {
         thisField.override = true;
       }
     });
@@ -388,7 +492,7 @@ class Generator {
     return augFields;
   }
 
-  compareFields(xField, yField) {
+  compareFields (xField, yField) {
     let x = xField.fieldName.toLowerCase();
     let y = yField.fieldName.toLowerCase();
 
@@ -399,10 +503,10 @@ class Generator {
       identifier: 3,
       title: 4,
       name: 5,
-      description: 6
+      description: 6,
     };
 
-    function compare(nameA, nameB) {
+    function compare (nameA, nameB) {
       if (nameA < nameB) {
         return -1;
       }
@@ -439,33 +543,33 @@ class Generator {
     return compare(x, y);
   }
 
-  createFullModel(fields, partialModel, models) {
+  createFullModel (fields, partialModel, models) {
     // Ensure each input prop exists
     let model = {
       requiredFields:
         this.getPropertyWithInheritance(
           "requiredFields",
           partialModel,
-          models
+          models,
         ) || [],
       requiredOptions:
         this.getPropertyWithInheritance(
           "requiredOptions",
           partialModel,
-          models
+          models,
         ) || [],
       recommendedFields:
         this.getPropertyWithInheritance(
           "recommendedFields",
           partialModel,
-          models
+          models,
         ) || [],
       extensionFields:
         this.getMergedPropertyWithInheritance(
           "extensionFields",
           partialModel,
-          models
-        ) || []
+          models,
+        ) || [],
     };
     // Get all options that are used in requiredOptions
     let optionSetFields = [];
@@ -478,13 +582,12 @@ class Generator {
       return map;
     }, {});
     // Set all known fields to false
-    model.requiredFields
-      .concat(model.recommendedFields)
-      .concat(model.extensionFields)
-      .forEach(field => (optionalFieldsMap[field] = false));
+    model.requiredFields.concat(model.recommendedFields).
+      concat(model.extensionFields).
+      forEach(field => (optionalFieldsMap[field] = false));
     // Create array of optional fields
     let optionalFields = Object.keys(optionalFieldsMap).filter(
-      field => optionalFieldsMap[field]
+      field => optionalFieldsMap[field],
     );
 
     return {
@@ -492,11 +595,11 @@ class Generator {
       recommendedFields: this.sortWithIdAndTypeOnTop(model.recommendedFields),
       optionalFields: this.sortWithIdAndTypeOnTop(optionalFields),
       extensionFields: this.sortWithIdAndTypeOnTop(model.extensionFields),
-      requiredOptions: model.requiredOptions
+      requiredOptions: model.requiredOptions,
     };
   }
 
-  sortWithIdAndTypeOnTop(arr) {
+  sortWithIdAndTypeOnTop (arr) {
     let firstList = [];
     if (arr.includes("type")) firstList.push("type");
     if (arr.includes("id")) firstList.push("id");
@@ -504,40 +607,53 @@ class Generator {
     return firstList.concat(remainingList.sort());
   }
 
-  convertToCamelCase(str) {
+  convertToCamelCase (str) {
     if (str === null || str === undefined) return null;
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  includedInSchema(url) {
+  snakeToCanonicalName (name) {
+    return name.replace(/(?:^|_)([a-z])/, (matches, index, original) => {
+      return matches[1].toUppercase();
+    });
+  }
+
+  canonicalToSnakeName ($name) {
+    return name.replace(/(?<=[a-z])([A-Z])/,
+      (matches) => {
+        return "_".matches[1];
+      }
+    ).toLowerCase();
+  }
+
+  includedInSchema (url) {
     if (!url) return false;
     return url.indexOf("//schema.org") > -1 || url.indexOf("schema:") == 0;
   }
 
-  cleanDocLines(docLines) {
+  cleanDocLines (docLines) {
     if (!docLines) {
       return "";
     }
 
-    return docLines
-      .filter(val => val)
-      .reduce((acc, val) => acc.concat(val.split("\n")), []);
+    return docLines.filter(val => val).
+      reduce((acc, val) => acc.concat(val.split("\n")), []);
   }
 
-  createModelDoc(model, models) {
+  createModelDoc (model, models) {
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
       model,
-      models
+      models,
     );
     let derivedFromName = this.convertToCamelCase(
-      this.getPropNameFromFQP(derivedFrom)
+      this.getPropNameFromFQP(derivedFrom),
     );
 
     let docLines = [
       this.getPropNameFromFQP(model.type) !== model.type &&
-        `[NOTICE: This is a beta class, and is highly likely to change in future versions of this library.].`,
-      this.createCommentFromDescription(model.description)
+      `[NOTICE: This is a beta class, and is highly likely to change in future versions of this library.].`,
+      this.createCommentFromDescription(model.description),
     ];
 
     if (derivedFrom) {
@@ -556,12 +672,12 @@ class Generator {
     return this.cleanDocLines(docLines);
   }
 
-  createEnumDoc(typeName, thisEnum) {
+  createEnumDoc (typeName, thisEnum) {
     let docLines = [];
 
     if (thisEnum.extensionPrefix == "beta") {
       docLines.push(
-        "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]"
+        "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]",
       );
     }
 
@@ -572,11 +688,11 @@ class Generator {
     return this.cleanDocLines(docLines);
   }
 
-  isArray(prop) {
+  isArray (prop) {
     return prop.indexOf("ArrayOf") == 0;
   }
 
-  getPropLinkFromFQP(prop) {
+  getPropLinkFromFQP (prop) {
     if (prop.lastIndexOf("/") > -1) {
       return prop.replace("ArrayOf#", "");
     } else if (prop.lastIndexOf("#") > -1) {
@@ -587,7 +703,10 @@ class Generator {
     } else return "#";
   }
 
-  getPropNameFromFQP(prop) {
+  getPropNameFromFQP (prop) {
+    if (prop && prop.toLowerCase().indexOf('event') >= 0) {
+      console.log(prop);
+    }
     if (prop === null || prop === undefined) return null;
     //Just the characters after the last /, # or :
     let match = prop.match(/[/#:]/g);
@@ -598,29 +717,29 @@ class Generator {
     } else return prop;
   }
 
-  createDescriptionWithExample(field) {
+  createDescriptionWithExample (field) {
     if (field.requiredContent) {
       return (
         "Must always be present and set to " +
         this.renderCode(
           field.requiredContent,
           field.fieldName,
-          field.requiredType
+          field.requiredType,
         )
       );
     } else {
       let lines = [
         "<summary>",
         field.extensionPrefix == "beta" &&
-          "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
+        "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
         ...field.description,
-        "</summary>"
+        "</summary>",
       ];
       lines.concat(field.description);
       if (field.example) {
         lines.push("<example>");
         lines.push(
-          this.renderCode(field.example, field.fieldName, field.requiredType)
+          this.renderCode(field.example, field.fieldName, field.requiredType),
         );
         lines.push("</example>");
       }
@@ -629,7 +748,7 @@ class Generator {
     }
   }
 
-  renderCode(code, fieldName, requiredType) {
+  renderCode (code, fieldName, requiredType) {
     if (typeof code === "object") {
       return (
         "<code>\n" +
@@ -651,7 +770,7 @@ class Generator {
     }
   }
 
-  hasBaseClass(subClassOf, derivedFrom) {
+  hasBaseClass (subClassOf, derivedFrom) {
     if (subClassOf || !derivedFrom) {
       return true;
     }
