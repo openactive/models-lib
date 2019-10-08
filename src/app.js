@@ -33,7 +33,7 @@ program
     }
 
     const Generator = generators[language];
-    if (!language) {
+    if (!Generator) {
       console.error("Invalid language specified");
       return;
     }
