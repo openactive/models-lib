@@ -144,6 +144,7 @@ class DotNet extends Generator {
 
     let obj = {
       propName: field.fieldName,
+      pascalCasePropName: propertyName,
       description: this.createDescriptionWithExample(field)
     };
 

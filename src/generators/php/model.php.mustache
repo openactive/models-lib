@@ -15,12 +15,12 @@ class {{{className}}} extends {{{ inherits }}}
 {{/fieldList}}
 
 {{#fieldList}}
-    public function get{{{propName}}}()
+    public function get{{{pascalCasePropName}}}()
     {
         return $this->{{{propName}}};
     }
 
-    public function set{{{propName}}}(${{{propName}}})
+    public function set{{{pascalCasePropName}}}(${{{propName}}})
     {
         return $this->{{{propName}}} = ${{{propName}}};
     }
