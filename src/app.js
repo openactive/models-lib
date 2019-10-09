@@ -4,8 +4,6 @@ let generators = {
   ".NET": DotNet
 };
 
-// console.log(generators);
-
 const DATA_MODEL_OUTPUT_DIR = "../OpenActive.NET/";
 
 const program = require("commander");
@@ -20,8 +18,6 @@ program
   .option("--no-beta", "Disable the beta extension")
   .option("-d, --destination <destination>", "Output directory")
   .action((language, options) => {
-    console.log(options);
-
     if (!options.destination) {
       console.error("Destination must be specified");
       return;
