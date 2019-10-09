@@ -102,14 +102,11 @@ class Generator {
         field.order = index + 6;
         return field;
       });
-    // let fullModel = this.createFullModel(fullFields, model, models);
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
       model,
       models
     );
-    // let derivedFromName = this.convertToCamelCase(
-    //   this.getPropNameFromFQP(derivedFrom));
 
     let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
