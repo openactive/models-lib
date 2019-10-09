@@ -64,7 +64,7 @@ class Generator {
 
         fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
           if (err) {
-            return console.log(err);
+            return console.error(err);
           }
 
           console.log("FILE SAVED: " + pageName);
@@ -86,7 +86,7 @@ class Generator {
 
         fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
           if (err) {
-            return console.log(err);
+            return console.error(err);
           }
 
           console.log("FILE SAVED: " + pageName);
