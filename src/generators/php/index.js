@@ -224,26 +224,40 @@ class DotNet extends Generator {
       let subClassOfName = this.convertToCamelCase(
         this.getPropNameFromFQP(subClassOf)
       );
+
       if (this.includedInSchema(subClassOf)) {
         return `\\OpenActive\\Models\\SchemaOrg\\${subClassOfName}`;
-      } else {
-        return `\\OpenActive\\Models\\${subClassOfName}`;
       }
-    } else if (derivedFrom) {
+
+      if (this.includedInSchema(model.type)) {
+        // If type is from schema.org, we override schema.org
+        return `\\OpenActive\\Models\\SchemaOrg\\${subClassOfName}`;
+      }
+
+      return `\\OpenActive\\Models\\OA\\${subClassOfName}`;
+    }
+
+    if (derivedFrom) {
       let derivedFromName = this.convertToCamelCase(
         this.getPropNameFromFQP(derivedFrom)
       );
+
       if (this.includedInSchema(derivedFrom)) {
-        return `\\OpenActive\\Models\\${derivedFromName}`;
-      } else {
-        // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-        return `\\OpenActive\\BaseModel`;
+        return `\\OpenActive\\Models\\SchemaOrg\\${derivedFromName}`;
       }
-    } else {
-      // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-      // throw new Error("No base class specified for: " + model.type);
-      return null;
+
+      if (this.includedInSchema(model.type)) {
+        // If type is from schema.org, we override schema.org
+        return `\\OpenActive\\Models\\SchemaOrg\\${derivedFromName}`;
+      }
+
+      // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
+      return `\\OpenActive\\BaseModel`;
     }
+
+    // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
+    // throw new Error("No base class specified for: " + model.type);
+    return null;
   }
 }
 
