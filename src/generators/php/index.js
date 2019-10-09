@@ -9,14 +9,6 @@ class DotNet extends Generator {
   renderModel(data) {
     const includedInSchema = this.includedInSchema(data.modelType);
 
-    Handlebars.registerHelper("extendsText", function() {
-      if (this.inherits === null) {
-        return new Handlebars.SafeString("");
-      }
-
-      return " extends " + this.inherits;
-    });
-
     Handlebars.registerHelper("subNamespaceText", function() {
       if (!includedInSchema) {
         return new Handlebars.SafeString("\\OA");
