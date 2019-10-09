@@ -44,8 +44,10 @@ class DotNet extends Generator {
   }
 
   getModelFilename(model) {
-    if (this.includedInSchema(model.subClassOf)) {
-      return "/models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php";
+    if (this.includedInSchema(model.type)) {
+      return (
+        "/models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
+      );
     }
 
     return "/models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
