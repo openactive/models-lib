@@ -127,6 +127,28 @@ class DotNet extends Generator {
     }
   }
 
+  renderCode (code, fieldName, requiredType) {
+    if (typeof code === "object") {
+      return (
+        "<code>\n" +
+        (fieldName ? `"` + fieldName + `": ` : "") +
+        JSON.stringify(code, null, 2) +
+        "\n</code>"
+      );
+    } else {
+      let isNumber =
+        requiredType &&
+        (requiredType.indexOf("Integer") > -1 ||
+          requiredType.indexOf("Float") > -1);
+      return (
+        "<code>\n" +
+        (fieldName ? `"` + fieldName + `": ` : "") +
+        (isNumber ? code : `"` + code + `"`) +
+        "\n</code>"
+      );
+    }
+  }
+
   renderJsonConverter(field, propertyType) {
     if (propertyType == "TimeSpan?") {
       return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
