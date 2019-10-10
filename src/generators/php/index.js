@@ -139,6 +139,37 @@ class DotNet extends Generator {
     }
   }
 
+  createDescriptionWithExample (field) {
+    if (field.requiredContent) {
+      return (
+        "Must always be present and set to " +
+        this.renderCode(
+          field.requiredContent,
+          field.fieldName,
+          field.requiredType,
+        )
+      );
+    } else {
+      let lines = [
+        "<summary>",
+        field.extensionPrefix == "beta" &&
+        "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
+        ...field.description,
+        "</summary>",
+      ];
+      lines.concat(field.description);
+      if (field.example) {
+        lines.push("<example>");
+        lines.push(
+          this.renderCode(field.example, field.fieldName, field.requiredType),
+        );
+        lines.push("</example>");
+      }
+
+      return this.cleanDocLines(lines);
+    }
+  }
+
   createPropertyFromField(field, models, enumMap, hasBaseClass) {
     let memberName = field.extensionPrefix
       ? `${field.extensionPrefix}:${field.fieldName}`
