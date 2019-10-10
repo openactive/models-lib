@@ -24,11 +24,17 @@ class {{{className}}} extends {{{ inherits }}}
 
 {{/fieldList}}
 {{#fieldList}}
+    /**
+     * @return {{{propertyType}}}
+     */
     public function get{{{pascalCasePropName}}}()
     {
         return $this->{{{propName}}};
     }
 
+    /**
+     * @var {{{propertyType}}}
+     */
     public function set{{{pascalCasePropName}}}(${{{propName}}})
     {
         return $this->{{{propName}}} = ${{{propName}}};
