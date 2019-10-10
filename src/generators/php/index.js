@@ -209,6 +209,7 @@ class DotNet extends Generator {
       propName: field.fieldName,
       pascalCasePropName: propertyName,
       description: this.createDescriptionWithExample(field)
+      codeExample: this.createCodeExample(field)
     };
 
     if (field.obsolete) {

@@ -195,6 +195,20 @@ class Generator {
     }
   }
 
+  createCodeExample (field) {
+    if (!field.example) {
+      return null;
+    }
+
+    let lines = [];
+
+    lines.push(
+      this.renderCode(field.example, field.fieldName, field.requiredType),
+    );
+
+    return this.cleanDocLines(lines);
+  }
+
   createTableFromFieldList (fieldList, models, enumMap, hasBaseClass) {
     return fieldList.filter(
       field => field.fieldName != "type" && field.fieldName != "@context",
