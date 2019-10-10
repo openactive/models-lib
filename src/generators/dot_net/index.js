@@ -143,7 +143,7 @@ class DotNet extends Generator {
     }
   }
 
-  createDescriptionWithExample (field) {
+  createDescription (field) {
     if (field.requiredContent) {
       return (
         "Must always be present and set to " +
@@ -162,13 +162,6 @@ class DotNet extends Generator {
         "</summary>",
       ];
       lines.concat(field.description);
-      if (field.example) {
-        lines.push("<example>");
-        lines.push(
-          this.renderCode(field.example, field.fieldName, field.requiredType),
-        );
-        lines.push("</example>");
-      }
 
       return this.cleanDocLines(lines);
     }
@@ -191,7 +184,7 @@ class DotNet extends Generator {
 
     if (field.obsolete) {
       return {
-        description: this.createDescriptionWithExample(field),
+        description: this.createDescription(field),
         codeExample: this.createCodeExample(field),
         decorators: [
           `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
@@ -210,8 +203,8 @@ class DotNet extends Generator {
       }
 
       return {
-        description: this.createDescriptionWithExample(field),
         codeExample: this.createCodeExample(field),
+        description: this.createDescription(field),
         decorators: [
           `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
           jsonConverter
