@@ -231,7 +231,7 @@ class DotNet extends Generator {
     }
 
     // OpenActive SingleValues not allow many of the same type, only allows one
-    return types.length > 1 ? `SingleValues<${types.join(", ")}>` : types[0];
+    return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
   calculateInherits(subClassOf, derivedFrom, model) {
