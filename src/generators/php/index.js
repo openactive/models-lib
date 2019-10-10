@@ -77,9 +77,9 @@ class DotNet extends Generator {
     if (this.isArray(fullyQualifiedType)) {
       // Remove ? from end of type if it's a list
       if (baseType.slice(-1) == "?") {
-        return `List<${baseType.slice(0, -1)}>`;
+        return `${baseType.slice(0, -1)}[]`;
       } else {
-        return `List<${baseType}>`;
+        return `${baseType}[]`;
       }
     } else {
       return baseType;
