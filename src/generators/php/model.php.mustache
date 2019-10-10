@@ -12,9 +12,14 @@ class {{{className}}} extends {{{ inherits }}}
 {
 
 {{#fieldList}}
+    /**
+{{#description}}
+     * {{{ . }}}
+{{/description}}
+     */
     protected ${{{propName}}};
-{{/fieldList}}
 
+{{/fieldList}}
 {{#fieldList}}
     public function get{{{pascalCasePropName}}}()
     {
