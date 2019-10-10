@@ -161,7 +161,7 @@ class DotNet extends Generator {
     }
   }
 
-  createDescriptionWithExample (field) {
+  createDescription (field) {
     if (field.requiredContent) {
       return (
         "Must always be present and set to " +
@@ -178,13 +178,6 @@ class DotNet extends Generator {
         ...field.description,
       ];
       lines.concat(field.description);
-      if (field.example) {
-        lines.push("<example>");
-        lines.push(
-          this.renderCode(field.example, field.fieldName, field.requiredType),
-        );
-        lines.push("</example>");
-      }
 
       return this.cleanDocLines(lines);
     }
@@ -208,7 +201,7 @@ class DotNet extends Generator {
     let obj = {
       propName: field.fieldName,
       pascalCasePropName: propertyName,
-      description: this.createDescriptionWithExample(field)
+      description: this.createDescription(field),
       codeExample: this.createCodeExample(field)
     };
 
