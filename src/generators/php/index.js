@@ -130,10 +130,10 @@ class DotNet extends Generator {
   renderCode (code, fieldName, requiredType) {
     if (typeof code === "object") {
       return (
-        "<code>\n" +
+        "```json\n" +
         (fieldName ? `"` + fieldName + `": ` : "") +
         JSON.stringify(code, null, 2) +
-        "\n</code>"
+        "\n```"
       );
     } else {
       let isNumber =
@@ -141,10 +141,10 @@ class DotNet extends Generator {
         (requiredType.indexOf("Integer") > -1 ||
           requiredType.indexOf("Float") > -1);
       return (
-        "<code>\n" +
+        "```json\n" +
         (fieldName ? `"` + fieldName + `": ` : "") +
         (isNumber ? code : `"` + code + `"`) +
-        "\n</code>"
+        "\n```"
       );
     }
   }
