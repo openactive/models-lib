@@ -197,7 +197,7 @@ class Generator {
 
   createCodeExample (field) {
     if (!field.example) {
-      return null;
+      return [];
     }
 
     let lines = [];
