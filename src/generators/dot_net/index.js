@@ -155,11 +155,9 @@ class DotNet extends Generator {
       );
     } else {
       let lines = [
-        "<summary>",
         field.extensionPrefix == "beta" &&
         "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
         ...field.description,
-        "</summary>",
       ];
       lines.concat(field.description);
 
