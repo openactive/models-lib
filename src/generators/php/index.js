@@ -85,31 +85,30 @@ class DotNet extends Generator {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
-        return "bool?";
+        return "bool|null";
       case "Date": // TODO: Find better way of representing Date
       case "DateTime":
       case "Time":
         return "DateTime|null";
       case "Integer":
-        return "int?";
+        return "int|null";
       case "Float":
-        return "decimal?";
+        return "decimal|null";
       case "Number":
-        return "decimal?";
-      case "Date": // TODO: Find better way of representing Date
+        return "decimal|null";
       case "Text":
         return "string";
       case "Duration":
-        return "TimeSpan?";
+        return "DateInterval|null";
       case "URL":
       case "Property":
         return "Uri";
       default:
         if (enumMap[typeName]) {
           if (this.includedInSchema(enumMap[typeName].namespace)) {
-            return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
+            return "Schema.NET." + this.convertToCamelCase(typeName) + "|null";
           } else {
-            return this.convertToCamelCase(typeName) + "?";
+            return this.convertToCamelCase(typeName) + "|null";
           }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
