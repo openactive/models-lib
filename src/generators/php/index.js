@@ -125,6 +125,36 @@ class DotNet extends Generator {
     }
   }
 
+  isTypeNullable(prefixedTypeName, enumMap, modelsMap, isExtension) {
+    let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    switch (typeName) {
+      case "Boolean":
+      case "Date":
+      case "DateTime":
+      case "Duration":
+      case "Float":
+      case "Integer":
+      case "Number":
+      case "Time":
+        return true;
+      case "Property":
+      case "Text":
+      case "URL":
+        return false;
+      default:
+        if (enumMap[typeName]) {
+          return true;
+        } else if (modelsMap[typeName]) {
+          return false;
+        } else if (isExtension) {
+          // Extensions may reference schema.org, for which we have no reference here to confirm
+          return false;
+        } else {
+          throw new Error("Unrecognised type or enum referenced: " + typeName);
+        }
+    }
+  }
+
   renderCode(code, fieldName, requiredType) {
     if (typeof code === "object") {
       return (
