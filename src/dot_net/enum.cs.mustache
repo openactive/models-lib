@@ -1,0 +1,16 @@
+using System.Runtime.Serialization;
+namespace OpenActive.NET
+{
+    /// <summary>
+{{#enumDoc}}
+    /// {{{ . }}}
+{{/enumDoc}}
+    /// </summary>
+    public enum {{{ typeName }}}
+    {
+{{#each values}}
+        [EnumMember(Value = "{{{ memberVal }}}")]
+        {{{ value }}}{{#unless @last}},{{/unless}}
+{{/each}}
+    }
+}
