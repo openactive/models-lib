@@ -8,6 +8,7 @@ const DATA_MODEL_DOCS_URL_PREFIX =
 class DotNet extends Generator {
   renderModel(data) {
     const includedInSchema = this.includedInSchema(data.modelType);
+    const convertToCamelCase = this.convertToCamelCase;
 
     Handlebars.registerHelper("subNamespaceText", function() {
       if (!includedInSchema) {
@@ -15,6 +16,10 @@ class DotNet extends Generator {
       }
 
       return new Handlebars.SafeString("\\SchemaOrg");
+    });
+
+    Handlebars.registerHelper("pascalCasePropName", function() {
+      return new Handlebars.SafeString(convertToCamelCase(this.propName));
     });
 
     this.modelTemplate =
@@ -206,7 +211,6 @@ class DotNet extends Generator {
 
     let obj = {
       propName: field.fieldName,
-      pascalCasePropName: propertyName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
       propertyType: propertyType
