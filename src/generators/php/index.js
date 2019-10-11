@@ -86,9 +86,10 @@ class DotNet extends Generator {
     switch (typeName) {
       case "Boolean":
         return "bool?";
+      case "Date": // TODO: Find better way of representing Date
       case "DateTime":
       case "Time":
-        return "DateTimeOffset?";
+        return "DateTime|null";
       case "Integer":
         return "int?";
       case "Float":
