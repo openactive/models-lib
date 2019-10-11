@@ -39,6 +39,12 @@ program
     let extensions = {};
 
     if (options.beta) {
+      extensions["extensions"] = {
+        url: "https://www.openactive.io/extensions/extensions.jsonld",
+        heading: "OpenActive Extensions context",
+        description:
+          "OpenActive Extension contexts"
+      };
       extensions["beta"] = {
         url: "https://www.openactive.io/ns-beta/beta.jsonld",
         heading: "OpenActive Beta Extension properties",
@@ -52,7 +58,7 @@ program
       }
     }
 
-    generator.generateModelClassFiles(options.destination, extensions);
+    generator.generateModelClassFiles(options.destination, extensions).catch((e) => console.error(e) );
   });
 
 program

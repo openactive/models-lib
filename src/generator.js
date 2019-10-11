@@ -4,120 +4,147 @@ let fsExtra = require("fs-extra");
 let request = require("sync-request");
 let path = require("path");
 
+import * as jsonld from "jsonld";
+
 class Generator {
-  generateModelClassFiles (dataModelDirectory, extensions) {
+  async generateModelClassFiles (dataModelDirectory, extensions) {
     // Empty output directories
     //
     // fsExtra.emptyDirSync(dataModelDirectory + "/models");
     // fsExtra.emptyDirSync(dataModelDirectory + "/enums");
 
     // Returns the latest version of the models map
-    const models = getModels();
+    this.models = getModels();
 
-    const enumMap = getEnums();
-    const namespaces = getMetaData().namespaces;
+    this.enumMap = getEnums();
+    this.namespaces = getMetaData().namespaces;
 
-    // Add all extensions and namespaces first, in case they reference each other
-    Object.keys(extensions).forEach(prefix => {
-      let extension = this.getExtension(extensions[prefix].url);
-      if (!extension) throw "Error loading extension: " + prefix;
+    await this.loadExtensions(extensions);
 
-      extensions[prefix].graph = extension["@graph"];
-      console.log(extension["@context"]);
-
-      // extension["@context"].forEach(context => {
-      //   if (typeof context === "object") {
-      //     Object.assign(namespaces, context);
-      //   }
-      // });
-
-      function _context(context) {
-        if (Array.isArray(context)) {
-          context.forEach(context => {
-            _context(context)
-          });
-        }
-        else if (typeof context === "object") {
-          Object.assign(namespaces, context);
-        }
-      }
-
-      _context(extension["@context"]);
-
-      console.log(namespaces);
-    });
-
-    Object.keys(extensions).forEach(prefix => {
-      let extension = extensions[prefix];
-      this.augmentWithExtension(
-        extension.graph,
-        models,
-        extension.url,
-        prefix,
-        namespaces,
-      );
-      this.augmentEnumsWithExtension(
-        extension.graph,
-        enumMap,
-        extension.url,
-        prefix,
-        namespaces,
-      );
-    });
-
-    fs.writeFileSync('models.json', JSON.stringify(models, null, 2));
-    console.log(Object.keys(models));
+    fs.writeFileSync("models.json", JSON.stringify(this.models, null, 2));
 
     this.getDirs().forEach(dir => {
       fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
     });
 
-    Object.keys(models).forEach(typeName => {
-      let model = models[typeName];
+    Object.keys(this.models).forEach(typeName => {
+      let model = this.models[typeName];
       if (typeName != "undefined") {
         //ignores "model_list.json" (which appears to be ignored everywhere else)
 
         let pageName = this.getModelFilename(model);
         let pageContent = this.createModelFile(
           model,
-          models,
+          this.models,
           extensions,
-          enumMap,
+          this.enumMap,
         );
 
-        console.log("NAME: " + pageName);
-        console.log(pageContent);
+        // console.log("NAME: " + pageName);
+        // console.log(pageContent);
 
         fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
           if (err) {
             return console.log(err);
           }
 
-          console.log("FILE SAVED: " + pageName);
+          // console.log("FILE SAVED: " + pageName);
         });
       }
     });
 
     // Converts the enum map into an array for ease of use
-    Object.keys(enumMap).
+    Object.keys(this.enumMap).
       // filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
       forEach(typeName => {
-        let thisEnum = enumMap[typeName];
+        let thisEnum = this.enumMap[typeName];
 
         let pageName = this.getEnumFilename(typeName);
         let pageContent = this.createEnumFile(typeName, thisEnum);
 
-        console.log("NAME: " + pageName);
-        console.log(pageContent);
+        // console.log("NAME: " + pageName);
+        // console.log(pageContent);
 
         fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
           if (err) {
             return console.log(err);
           }
 
-          console.log("FILE SAVED: " + pageName);
+          // console.log("FILE SAVED: " + pageName);
         });
       });
+  }
+
+  async loadExtensions (extensions) {
+    let extensionData = {};
+
+    for (let prefix of Object.keys(extensions)) {
+      if (extensions[prefix].spec) {
+        continue;
+      }
+
+      let extension = await this.getExtension(extensions[prefix].url);
+      if (!extension) throw "Error loading extension: " + prefix;
+
+      extensions[prefix].spec = extension;
+    }
+
+    // Add all extensions and namespaces first, in case they reference each other
+    for (let prefix of Object.keys(extensions)) {
+      let extension = extensions[prefix].spec;
+
+      if (!extension) {
+        continue;
+      }
+
+      this.storeNamespaces(extension["@context"]);
+    }
+
+    for (let prefix of Object.keys(extensions)) {
+      let extension = extensions[prefix].spec;
+
+      if (!extension || !extension["@graph"]) {
+        continue;
+      }
+
+      let expanded = await jsonld.compact(extension, extension["@context"]);
+      let compacted = await jsonld.compact(expanded, this.namespaces);
+
+      fs.writeFileSync("dump/" + prefix + "_compacted.json",
+        JSON.stringify(compacted, null, 2));
+
+      extensions[prefix].graph = compacted["@graph"];
+    }
+
+    Object.keys(extensions).forEach(async prefix => {
+      let extension = extensions[prefix];
+      if (extension.graph) {
+        await this.augmentWithExtension(
+          extension.graph,
+          this.models,
+          extension.url,
+          prefix,
+          this.namespaces,
+        );
+        this.augmentEnumsWithExtension(
+          extension.graph,
+          this.enumMap,
+          extension.url,
+          prefix,
+          this.namespaces,
+        );
+      }
+    });
+  }
+
+  storeNamespaces (context) {
+    if (Array.isArray(context)) {
+      context.forEach(context => {
+        this.storeNamespaces(this.namespaces, context);
+      });
+    } else if (typeof context === "object") {
+      Object.assign(this.namespaces, context);
+    }
   }
 
   createModelFile (model, models, extensions, enumMap) {
@@ -128,14 +155,12 @@ class Generator {
         field.order = index + 6;
         return field;
       });
-    // let fullModel = this.createFullModel(fullFields, model, models);
+
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
       model,
       models,
     );
-    // let derivedFromName = this.convertToCamelCase(
-    //   this.getPropNameFromFQP(derivedFrom));
 
     let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
@@ -246,85 +271,20 @@ class Generator {
     extensionPrefix,
     namespaces,
   ) {
-
-    extModelGraph = extModelGraph.map((node) => {
-
-      function _handleValue(item) {
-        let val = item;
-        if (item['@id']) {
-          val = item['@id'];
-        }
-
-        if (!val) {
-          return;
-        }
-
-        return val.replace('http://schema.org/', 'schema:')
-      }
-
-      function _handleArray(array) {
-        if (!Array.isArray(array)) {
-          array = [array];
-        }
-
-        return array.map(_handleValue);
-      }
-
-      if (node['@id']) {
-        node.id = _handleValue(node['@id']);
-      }
-      if (node['@type']) {
-        let val = node['@type'];
-        if (Array.isArray(val)) {
-          val = val[0];
-        }
-
-        node.type = val.replace(/^rdfs?:/, '');
-      }
-      if (node['rdfs:comment']) {
-        node.comment = node['rdfs:comment'];
-      }
-      if (node['rdfs:label']) {
-        node.label = node['rdfs:label'];
-      }
-      if (node['rdfs:subClassOf']) {
-        node.subClassOf = _handleArray(node['rdfs:subClassOf']);
-      }
-      if (node['rdfs:rangeIncludes']) {
-        node.rangeIncludes = _handleArray(node['rdfs:rangeIncludes']);
-      }
-
-      function handleUrlField(name) {
-        let value = node['http://schema.org/'+name];
-
-        if (!value) {
-          return;
-        }
-
-        value =  _handleArray(value);
-
-        node[name] = value;
-      }
-
-      handleUrlField('rangeIncludes');
-      handleUrlField('domainIncludes');
-
-      return node;
-    });
-
-
     // Add classes first
     extModelGraph.forEach(node => {
 
       if (!node.subClassOf) {
         node.subClassOf = [];
+      } else if (!Array.isArray(node.subClassOf)) {
+        node.subClassOf = [node.subClassOf];
       }
 
       if (
         node.type === "Class" &&
-        Array.isArray(node.subClassOf) &&
         node.subClassOf[0] != "schema:Enumeration"
       ) {
+
         // Only include subclasses for either OA or schema.org classes
         // let subClasses = node.subClassOf.filter(
         //   prop =>
@@ -338,7 +298,7 @@ class Generator {
             ? {
               type: node.id,
               // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
-              subClassOf: models[this.getPropNameFromFQP(subClasses[0])]
+              subClassOf: models[subClasses[0]]
                 ? "#" + this.getPropNameFromFQP(subClasses[0])
                 : this.expandPrefix(subClasses[0], false, namespaces),
             }
@@ -360,6 +320,12 @@ class Generator {
           node.domainIncludes = [];
         }
 
+        if (!Array.isArray(node.domainIncludes)) {
+          node.domainIncludes = [node.domainIncludes];
+        }
+        if (!Array.isArray(node.rangeIncludes)) {
+          node.rangeIncludes = [node.rangeIncludes];
+        }
 
         let field = {
           fieldName: this.getPropNameFromFQP(node.id),
@@ -378,7 +344,7 @@ class Generator {
           extensionPrefix: extensionPrefix,
         };
         node.domainIncludes.forEach(prop => {
-          let model = models[this.getPropNameFromFQP(prop)];
+          let model = models[prop];
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
@@ -418,7 +384,7 @@ class Generator {
     if (prop.lastIndexOf(":") > -1) {
       let propNs = prop.substring(0, prop.indexOf(":"));
       let propName = prop.substring(prop.indexOf(":") + 1);
-      if (namespaces[propNs]) {
+      if (this.namespaces[propNs]) {
         if (propNs === "oa") {
           return (this.isArray ? "ArrayOf#" : "#") + propName;
         } else {
@@ -443,8 +409,13 @@ class Generator {
       accept: "application/ld+json",
     });
     if (response && response.statusCode == 200) {
-      let body = JSON.parse(response.body);
-      return body["@graph"] && body["@context"] ? body : undefined;
+
+      let rawbody = response.body.toString("utf8");
+
+      rawbody = rawbody.replace(/http:\/\/schema\.org/g, "https://schema.org");
+
+      let body = JSON.parse(rawbody);
+      return body["@context"] ? body : undefined;
     } else {
       return undefined;
     }
@@ -658,13 +629,14 @@ class Generator {
     return name.replace(/(?<=[a-z])([A-Z])/,
       (matches) => {
         return "_".matches[1];
-      }
+      },
     ).toLowerCase();
   }
 
   includedInSchema (url) {
     if (!url) return false;
-    return url.indexOf("//schema.org") > -1 || url.indexOf("schema:") == 0;
+
+    return this.getNamespace(url)[0] == "schema";
   }
 
   cleanDocLines (docLines) {
@@ -728,6 +700,12 @@ class Generator {
     return prop.indexOf("ArrayOf") == 0;
   }
 
+  getNamespace (prop) {
+    let props = prop.split(":");
+    props.pop();
+    return props;
+  }
+
   getPropLinkFromFQP (prop) {
     if (prop.lastIndexOf("/") > -1) {
       return prop.replace("ArrayOf#", "");
@@ -740,7 +718,7 @@ class Generator {
   }
 
   getPropNameFromFQP (prop) {
-    if (prop && prop.toLowerCase().indexOf('event') >= 0) {
+    if (prop && prop.toLowerCase().indexOf("event") >= 0) {
       console.log(prop);
     }
     if (prop === null || prop === undefined) return null;

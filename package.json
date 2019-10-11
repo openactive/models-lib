@@ -23,6 +23,7 @@
     "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
     "handlebars": "^4.4.0",
+    "jsonld": "^1.8.0",
     "schema-dts-gen": "^0.4.2",
     "sync-request": "^6.0.0"
   },
