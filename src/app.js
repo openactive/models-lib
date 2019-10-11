@@ -3,7 +3,7 @@ import PHP from "./generators/php";
 
 let generators = {
   ".NET": DotNet,
-  "PHP": PHP
+  PHP: PHP
 };
 
 const program = require("commander");
@@ -42,8 +42,7 @@ program
       extensions["extensions"] = {
         url: "https://www.openactive.io/extensions/extensions.jsonld",
         heading: "OpenActive Extensions context",
-        description:
-          "OpenActive Extension contexts"
+        description: "OpenActive Extension contexts"
       };
       extensions["beta"] = {
         url: "https://www.openactive.io/ns-beta/beta.jsonld",
@@ -55,17 +54,15 @@ program
         url: "http://schema.org/version/latest/schema.jsonld",
         heading: "Schema.org",
         description: "Schema.org"
-      }
+      };
     }
 
-    generator.generateModelClassFiles(options.destination, extensions).catch((e) => console.error(e) );
+    generator
+      .generateModelClassFiles(options.destination, extensions)
+      .catch(e => console.error(e));
   });
 
-program
-  .command("schema_models")
-  .action(() => {
-
-});
+program.command("schema_models").action(() => {});
 
 program.on("command:*", function() {
   console.error(
