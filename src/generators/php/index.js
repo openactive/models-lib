@@ -222,9 +222,13 @@ class DotNet extends Generator {
       .concat(field.model)
       .filter(type => type !== undefined);
 
-    types = types.map(fullyQualifiedType =>
-      this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
-    );
+    // We get the PHP types from given schema/OA ones,
+    // And we filter out duplication
+    types = types
+      .map(fullyQualifiedType =>
+        this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
+      )
+      .filter((val, idx, self) => self.indexOf(val) === idx);
 
     if (types.length == 0) {
       throw new Error("No type found for field: " + field.fieldName);
