@@ -5,7 +5,14 @@ import fs from "fs";
 const DATA_MODEL_DOCS_URL_PREFIX =
   "https://developer.openactive.io/data-model/types/";
 
-class DotNet extends Generator {
+class PHP extends Generator {
+  mutateExtensions(extensions) {
+    return {
+      ...require("../../extensions/_schema.json"),
+      ...extensions
+    };
+  }
+
   renderModel(data) {
     const includedInSchema = this.includedInSchema(data.modelType);
     const convertToCamelCase = this.convertToCamelCase;
@@ -313,4 +320,4 @@ class DotNet extends Generator {
   }
 }
 
-export default DotNet;
+export default PHP;

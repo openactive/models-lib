@@ -8,16 +8,15 @@ import * as jsonld from "jsonld";
 
 class Generator {
   async generateModelClassFiles(dataModelDirectory, extensions) {
-    // Empty output directories
-    //
-    // fsExtra.emptyDirSync(dataModelDirectory + "/models");
-    // fsExtra.emptyDirSync(dataModelDirectory + "/enums");
-
     // Returns the latest version of the models map
     this.models = getModels();
 
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
+
+    if (this.mutateExtensions && typeof this.mutateExtensions === "function") {
+      extensions = this.mutateExtensions(extensions);
+    }
 
     await this.loadExtensions(extensions);
 
@@ -356,12 +355,10 @@ class Generator {
       let propName = prop.substring(prop.indexOf(":") + 1);
       if (this.namespaces[propNs]) {
         if (propNs === "oa") {
-          return (this.isArray ? "ArrayOf#" : "#") + propName;
+          return (isArray ? "ArrayOf#" : "#") + propName;
         } else {
           return (
-            (this.isArray ? "ArrayOf#" : "") +
-            this.namespaces[propNs] +
-            propName
+            (isArray ? "ArrayOf#" : "") + this.namespaces[propNs] + propName
           );
         }
       } else {
