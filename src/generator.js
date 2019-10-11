@@ -35,9 +35,7 @@ class Generator {
         let pageName = this.getModelFilename(model);
         let pageContent = this.createModelFile(
           model,
-          this.models,
-          extensions,
-          this.enumMap,
+          extensions
         );
 
         // console.log("NAME: " + pageName);
@@ -121,17 +119,13 @@ class Generator {
       if (extension.graph) {
         await this.augmentWithExtension(
           extension.graph,
-          this.models,
           extension.url,
           prefix,
-          this.namespaces,
         );
         this.augmentEnumsWithExtension(
           extension.graph,
-          this.enumMap,
           extension.url,
           prefix,
-          this.namespaces,
         );
       }
     });
@@ -147,8 +141,8 @@ class Generator {
     }
   }
 
-  createModelFile (model, models, extensions, enumMap) {
-    let fullFields = this.obsoleteNotInSpecFields(model, models);
+  createModelFile (model, extensions) {
+    let fullFields = this.obsoleteNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields).
       sort(this.compareFields).
       map((field, index) => {
@@ -158,8 +152,7 @@ class Generator {
 
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
-      model,
-      models,
+      model
     );
 
     let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
@@ -167,7 +160,7 @@ class Generator {
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
     let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
 
-    let doc = this.createModelDoc(model, models);
+    let doc = this.createModelDoc(model);
 
     let data = {
       classDoc: doc,
@@ -176,8 +169,6 @@ class Generator {
       modelType: model.type,
       fieldList: this.createTableFromFieldList(
         fullFieldsList,
-        models,
-        enumMap,
         hasBaseClass,
       ),
     };
@@ -256,20 +247,19 @@ class Generator {
     return this.cleanDocLines(lines);
   }
 
-  createTableFromFieldList (fieldList, models, enumMap, hasBaseClass) {
+  createTableFromFieldList (fieldList, hasBaseClass) {
     return fieldList.filter(
       field => field.fieldName != "type" && field.fieldName != "@context",
     ).map(field =>
-      this.createPropertyFromField(field, models, enumMap, hasBaseClass),
+      // note: not changing call for now as this goes into language implementation
+      this.createPropertyFromField(field, this.models, this.enumMap, hasBaseClass),
     );
   }
 
   augmentWithExtension (
     extModelGraph,
-    models,
     extensionUrl,
     extensionPrefix,
-    namespaces,
   ) {
     // Add classes first
     extModelGraph.forEach(node => {
@@ -298,15 +288,15 @@ class Generator {
             ? {
               type: node.id,
               // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
-              subClassOf: models[subClasses[0]]
+              subClassOf: this.models[subClasses[0]]
                 ? "#" + this.getPropNameFromFQP(subClasses[0])
-                : this.expandPrefix(subClasses[0], false, namespaces),
+                : this.expandPrefix(subClasses[0], false),
             }
             : {
               type: node.id,
             };
         // models[this.getPropNameFromFQP(node.id)] = model;
-        models[node.id] = model;
+        this.models[node.id] = model;
       }
     });
 
@@ -330,7 +320,7 @@ class Generator {
         let field = {
           fieldName: this.getPropNameFromFQP(node.id),
           alternativeTypes: node.rangeIncludes.map(type =>
-            this.expandPrefix(type, node.isArray, namespaces),
+            this.expandPrefix(type, node.isArray),
           ),
           description: [
             node.comment +
@@ -344,7 +334,7 @@ class Generator {
           extensionPrefix: extensionPrefix,
         };
         node.domainIncludes.forEach(prop => {
-          let model = models[prop];
+          let model = this.models[prop];
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
@@ -358,10 +348,8 @@ class Generator {
 
   augmentEnumsWithExtension (
     extModelGraph,
-    enumMap,
     extensionUrl,
     extensionPrefix,
-    namespaces,
   ) {
     extModelGraph.forEach(node => {
       if (
@@ -369,8 +357,8 @@ class Generator {
         Array.isArray(node.subClassOf) &&
         node.subClassOf[0] == "schema:Enumeration"
       ) {
-        enumMap[node.label] = {
-          namespace: namespaces[extensionPrefix],
+        this.enumMap[node.label] = {
+          namespace: this.namespaces[extensionPrefix],
           comment: node.comment,
           values: extModelGraph.filter(n => n.type == node.id).
             map(n => n.label),
@@ -380,7 +368,7 @@ class Generator {
     });
   }
 
-  expandPrefix (prop, isArray, namespaces) {
+  expandPrefix (prop, isArray) {
     if (prop.lastIndexOf(":") > -1) {
       let propNs = prop.substring(0, prop.indexOf(":"));
       let propName = prop.substring(prop.indexOf(":") + 1);
@@ -389,7 +377,7 @@ class Generator {
           return (this.isArray ? "ArrayOf#" : "#") + propName;
         } else {
           return (
-            (this.isArray ? "ArrayOf#" : "") + namespaces[propNs] + propName
+            (this.isArray ? "ArrayOf#" : "") + this.namespaces[propNs] + propName
           );
         }
       } else {
@@ -421,41 +409,41 @@ class Generator {
     }
   }
 
-  getParentModel (model, models) {
+  getParentModel (model) {
     if (model.subClassOf && model.subClassOf.indexOf("#") == 0) {
-      return models[model.subClassOf.substring(1)];
+      return this.models[model.subClassOf.substring(1)];
     } else {
       return false;
     }
   }
 
-  getPropertyWithInheritance (prop, model, models) {
+  getPropertyWithInheritance (prop, model) {
     if (model[prop]) return model[prop];
 
-    let parentModel = this.getParentModel(model, models);
+    let parentModel = this.getParentModel(model);
     if (parentModel) {
-      return this.getPropertyWithInheritance(prop, parentModel, models);
+      return this.getPropertyWithInheritance(prop, parentModel);
     }
 
     return null;
   }
 
-  getMergedPropertyWithInheritance (prop, model, models) {
+  getMergedPropertyWithInheritance (prop, model) {
     let thisProp = model[prop] || [];
-    let parentModel = this.getParentModel(model, models);
+    let parentModel = this.getParentModel(model);
     if (parentModel) {
       return thisProp.concat(
-        this.getMergedPropertyWithInheritance(prop, parentModel, models),
+        this.getMergedPropertyWithInheritance(prop, parentModel),
       );
     } else {
       return thisProp;
     }
   }
 
-  obsoleteNotInSpecFields (model, models) {
+  obsoleteNotInSpecFields (model) {
     let augFields = Object.assign({}, model.fields);
 
-    let parentModel = this.getParentModel(model, models);
+    let parentModel = this.getParentModel(model);
     if (model.notInSpec && model.notInSpec.length > 0)
       model.notInSpec.forEach(field => {
         if (parentModel && parentModel.fields[field]) {
@@ -550,32 +538,28 @@ class Generator {
     return compare(x, y);
   }
 
-  createFullModel (fields, partialModel, models) {
+  createFullModel (fields, partialModel) {
     // Ensure each input prop exists
     let model = {
       requiredFields:
         this.getPropertyWithInheritance(
           "requiredFields",
-          partialModel,
-          models,
+          partialModel
         ) || [],
       requiredOptions:
         this.getPropertyWithInheritance(
           "requiredOptions",
-          partialModel,
-          models,
+          partialModel
         ) || [],
       recommendedFields:
         this.getPropertyWithInheritance(
           "recommendedFields",
-          partialModel,
-          models,
+          partialModel
         ) || [],
       extensionFields:
         this.getMergedPropertyWithInheritance(
           "extensionFields",
-          partialModel,
-          models,
+          partialModel
         ) || [],
     };
     // Get all options that are used in requiredOptions
@@ -625,10 +609,10 @@ class Generator {
     });
   }
 
-  canonicalToSnakeName ($name) {
+  canonicalToSnakeName (name) {
     return name.replace(/(?<=[a-z])([A-Z])/,
       (matches) => {
-        return "_".matches[1];
+        return "_"+matches[1];
       },
     ).toLowerCase();
   }
@@ -648,11 +632,10 @@ class Generator {
       reduce((acc, val) => acc.concat(val.split("\n")), []);
   }
 
-  createModelDoc (model, models) {
+  createModelDoc (model) {
     let derivedFrom = this.getPropertyWithInheritance(
       "derivedFrom",
-      model,
-      models,
+      model
     );
     let derivedFromName = this.convertToCamelCase(
       this.getPropNameFromFQP(derivedFrom),
