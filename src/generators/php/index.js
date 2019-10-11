@@ -37,12 +37,7 @@ class DotNet extends Generator {
   }
 
   getDirs() {
-    return [
-      'models/',
-      'models/SchemaOrg/',
-      'models/OA/',
-      'enums/'
-    ];
+    return ["models/", "models/SchemaOrg/", "models/OA/", "enums/"];
   }
 
   getModelFilename(model) {
@@ -120,14 +115,17 @@ class DotNet extends Generator {
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
-          return "\\OpenActive\\Models\\SchemaOrg\\" + this.convertToCamelCase(typeName);
+          return (
+            "\\OpenActive\\Models\\SchemaOrg\\" +
+            this.convertToCamelCase(typeName)
+          );
         } else {
           throw new Error("Unrecognised type or enum referenced: " + typeName);
         }
     }
   }
 
-  renderCode (code, fieldName, requiredType) {
+  renderCode(code, fieldName, requiredType) {
     if (typeof code === "object") {
       return (
         "```json\n" +

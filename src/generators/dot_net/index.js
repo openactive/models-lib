@@ -27,10 +27,7 @@ class DotNet extends Generator {
   }
 
   getDirs() {
-    return [
-      '/models/',
-      '/enums/'
-    ];
+    return ["/models/", "/enums/"];
   }
 
   getModelFilename(model) {
@@ -109,7 +106,7 @@ class DotNet extends Generator {
     }
   }
 
-  renderCode (code, fieldName, requiredType) {
+  renderCode(code, fieldName, requiredType) {
     if (typeof code === "object") {
       return (
         "<code>\n" +
@@ -234,7 +231,7 @@ class DotNet extends Generator {
     } else {
       // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
       // throw new Error("No base class specified for: " + model.type);
-      return 'None';
+      return "None";
     }
   }
 }
