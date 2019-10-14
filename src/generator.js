@@ -1,6 +1,7 @@
 import { getModels, getEnums, getMetaData } from "@openactive/data-models";
-import { promises as fs } from "fs";
+import { promises as fs, constants as fsConstants } from "fs";
 import fsExtra from "fs-extra";
+import path from "path";
 import request from "sync-request";
 import isobject from "isobject";
 import * as jsonld from "jsonld";
@@ -62,8 +63,19 @@ class Generator {
     for (let filename of Object.keys(pageContent)) {
       let fileContent = pageContent[filename];
 
+      let fullpath = this.dataModelDirectory + filename;
+
+      let dir = path.dirname(fullpath);
+
+      try {
+        await fs.access(dir, fsConstants.R_OK);
+      }
+      catch(_e) {
+        await fs.mkdir(dir);
+      }
+
       await fs
-        .writeFile(this.dataModelDirectory + filename, fileContent)
+        .writeFile(fullpath, fileContent)
         .then(() => {
           console.log("FILE SAVED: " + filename);
         })
