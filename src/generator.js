@@ -5,6 +5,7 @@ import path from "path";
 import request from "sync-request";
 import isobject from "isobject";
 import * as jsonld from "jsonld";
+import Handlebars from "handlebars";
 
 class Generator {
   async generateModelClassFiles(dataModelDirectory, extensions) {
@@ -31,7 +32,7 @@ class Generator {
       if (typeName != "undefined") {
         //ignores "model_list.json" (which appears to be ignored everywhere else)
 
-        let pageContent = this.createModelFile(model, extensions);
+        let pageContent = await this.createModelFile(model, extensions);
         if (!isobject(pageContent)) {
           let pageName = this.getModelFilename(model);
 
@@ -47,7 +48,7 @@ class Generator {
     for (let typeName of Object.keys(this.enumMap)) {
       let thisEnum = this.enumMap[typeName];
 
-      let pageContent = this.createEnumFile(typeName, thisEnum);
+      let pageContent = await this.createEnumFile(typeName, thisEnum);
       if (!isobject(pageContent)) {
         let pageName = this.getEnumFilename(typeName);
 
@@ -69,8 +70,7 @@ class Generator {
 
       try {
         await fs.access(dir, fsConstants.R_OK);
-      }
-      catch(_e) {
+      } catch (_e) {
         await fs.mkdir(dir);
       }
 
@@ -142,7 +142,7 @@ class Generator {
     }
   }
 
-  createModelFile(model, extensions) {
+  createModelData(model, extensions) {
     let fullFields = this.obsoleteNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields)
       .sort(this.compareFields)
@@ -168,10 +168,16 @@ class Generator {
       fieldList: this.createTableFromFieldList(fullFieldsList, hasBaseClass)
     };
 
+    return data;
+  }
+
+  createModelFile(model, extensions) {
+    let data = this.createModelData(model, extensions);
+
     return this.renderModel(data);
   }
 
-  createEnumFile(typeName, thisEnum) {
+  createEnumData(typeName, thisEnum) {
     let doc = this.createEnumDoc(typeName, thisEnum);
 
     let data = {
@@ -183,7 +189,17 @@ class Generator {
       }))
     };
 
+    return data;
+  }
+
+  createEnumFile(typeName, thisEnum) {
+    let data = this.createEnumData(typeName, thisEnum);
+
     return this.renderEnum(data);
+  }
+
+  async loadTemplate(path) {
+    return Handlebars.compile(await fs.readFile(path, "utf8"));
   }
 
   createCommentFromDescription(description) {
