@@ -1,16 +1,53 @@
-using System.Runtime.Serialization;
-namespace OpenActive.NET
-{
-    /// <summary>
+<?php
+
+namespace OpenActive\Enums{{{subNamespaceText}}};
+
+/**
 {{#enumDoc}}
-    /// {{{ . }}}
+ * {{{ . }}}
 {{/enumDoc}}
-    /// </summary>
-    public enum {{{ typeName }}}
-    {
+ *
+ */
+class {{{typeName}}}
+{
 {{#each values}}
-        [EnumMember(Value = "{{{ memberVal }}}")]
-        {{{ value }}}{{#unless @last}},{{/unless}}
+    protected static ${{{value}}};
 {{/each}}
+
+{{#each values}}
+    public static function {{{value}}}() {
+        return self::${{{value}}};
+    }
+
+{{/each}}
+    public static function instantiateEnum() {
+    {{#each values}}
+        self::${{{value}}} = new self("{{{value}}}", "{{{memberVal}}}");
+    {{/each}}
+    }
+
+    protected $value;
+    protected $memberVal;
+
+    private function __construct($value, $memberVal) {
+        $this->value = $value;
+        $this->memberVal = $memberVal;
+    }
+
+    public function __get($field) {
+        if ($field === 'value') {
+            return $this->value;
+        }
+        else if ($field === 'memberVal') {
+            return $this->memberVal;
+        }
+    }
+
+    public function __isset($field) {
+        return in_array($field, ['value', 'memberVal']);
+    }
+
+    public function __set($key, $value) {
     }
 }
+{{{typeName}}}::instantiateEnum();
