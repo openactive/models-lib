@@ -21,8 +21,9 @@ class PHP extends Generator {
       data["subNamespaceText"] = "\\SchemaOrg";
     }
 
-    Handlebars.registerHelper("pascalCasePropName", () => {
-      return new Handlebars.SafeString(this.convertToCamelCase(this.propName));
+    let that = this;
+    Handlebars.registerHelper("pascalCasePropName", function() {
+      return new Handlebars.SafeString(that.convertToCamelCase(this.propName));
     });
 
     this.modelTemplate =
