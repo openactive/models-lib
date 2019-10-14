@@ -1,16 +1,15 @@
-const { getModels, getEnums, getMetaData } = require("@openactive/data-models");
-let fs = require("fs");
-let fsExtra = require("fs-extra");
-let request = require("sync-request");
-let path = require("path");
-
+import { getModels, getEnums, getMetaData } from "@openactive/data-models";
+import { promises as fs } from "fs";
+import fsExtra from "fs-extra";
+import request from "sync-request";
+import isobject from "isobject";
 import * as jsonld from "jsonld";
 
 class Generator {
   async generateModelClassFiles(dataModelDirectory, extensions) {
     // Returns the latest version of the models map
     this.models = getModels();
-
+    this.dataModelDirectory = dataModelDirectory;
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
 
@@ -20,53 +19,58 @@ class Generator {
 
     await this.loadExtensions(extensions);
 
-    fs.writeFileSync("models.json", JSON.stringify(this.models, null, 2));
+    // fs.writeFileSync("models.json", JSON.stringify(this.models, null, 2));
 
     this.getDirs().forEach(dir => {
       fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
     });
 
-    Object.keys(this.models).forEach(typeName => {
+    for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
       if (typeName != "undefined") {
         //ignores "model_list.json" (which appears to be ignored everywhere else)
 
-        let pageName = this.getModelFilename(model);
         let pageContent = this.createModelFile(model, extensions);
+        if (!isobject(pageContent)) {
+          let pageName = this.getModelFilename(model);
 
-        // console.log("NAME: " + pageName);
-        // console.log(pageContent);
-
-        fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
-          if (err) {
-            return console.error(err);
-          }
-
-          // console.log("FILE SAVED: " + pageName);
-        });
+          pageContent = {
+            [pageName]: pageContent
+          };
+        }
+        await this.savePage(pageContent);
       }
-    });
-
+    }
     // Converts the enum map into an array for ease of use
-    Object.keys(this.enumMap)
-      // filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
-      .forEach(typeName => {
-        let thisEnum = this.enumMap[typeName];
+    // filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
+    for (let typeName of Object.keys(this.enumMap)) {
+      let thisEnum = this.enumMap[typeName];
 
+      let pageContent = this.createEnumFile(typeName, thisEnum);
+      if (!isobject(pageContent)) {
         let pageName = this.getEnumFilename(typeName);
-        let pageContent = this.createEnumFile(typeName, thisEnum);
 
-        // console.log("NAME: " + pageName);
-        // console.log(pageContent);
+        pageContent = {
+          [pageName]: pageContent
+        };
+      }
+      await this.savePage(pageContent);
+    }
+  }
 
-        fs.writeFile(dataModelDirectory + pageName, pageContent, err => {
-          if (err) {
-            return console.error(err);
-          }
+  async savePage(pageContent) {
+    for (let filename of Object.keys(pageContent)) {
+      let fileContent = pageContent[filename];
 
-          // console.log("FILE SAVED: " + pageName);
+      await fs
+        .writeFile(this.dataModelDirectory + filename, fileContent)
+        .then(() => {
+          console.log("FILE SAVED: " + filename);
+        })
+        .catch(err => {
+          console.error(err);
         });
-      });
+    }
   }
 
   async loadExtensions(extensions) {
@@ -103,11 +107,6 @@ class Generator {
 
       let expanded = await jsonld.compact(extension, extension["@context"]);
       let compacted = await jsonld.compact(expanded, this.namespaces);
-
-      fs.writeFileSync(
-        "dump/" + prefix + "_compacted.json",
-        JSON.stringify(compacted, null, 2)
-      );
 
       extensions[prefix].graph = compacted["@graph"];
     }
