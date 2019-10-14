@@ -97,30 +97,32 @@ class PHP extends Generator {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
-        return "bool|null";
+        return "bool";
       case "Date": // TODO: Find better way of representing Date
       case "DateTime":
       case "Time":
-        return "DateTime|null";
+        return "DateTime";
       case "Integer":
-        return "int|null";
+        return "int";
       case "Float":
-        return "decimal|null";
+        return "decimal";
       case "Number":
-        return "decimal|null";
+        return "decimal";
       case "Text":
         return "string";
       case "Duration":
-        return "DateInterval|null";
+        return "DateInterval";
       case "URL":
       case "Property":
         return "Uri";
+      case "null":
+        return "null";
       default:
         if (enumMap[typeName]) {
           if (this.includedInSchema(enumMap[typeName].namespace)) {
-            return "Schema.NET." + this.convertToCamelCase(typeName) + "|null";
+            return "Schema.NET." + this.convertToCamelCase(typeName);
           } else {
-            return this.convertToCamelCase(typeName) + "|null";
+            return this.convertToCamelCase(typeName);
           }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
@@ -267,6 +269,13 @@ class PHP extends Generator {
       .concat(field.alternativeModels)
       .concat(field.model)
       .filter(type => type !== undefined);
+
+    // Add nullable types
+    types.forEach(fullyQualifiedType => {
+      if(this.isTypeNullable(fullyQualifiedType, enumMap, models, isExtension)) {
+        types.push("null");
+      }
+    });
 
     // We get the PHP types from given schema/OA ones,
     // and filter out duplicated types
