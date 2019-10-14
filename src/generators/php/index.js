@@ -82,9 +82,9 @@ class PHP extends Generator {
       isExtension
     );
     if (this.isArray(fullyQualifiedType)) {
-      // Remove ? from end of type if it's a list
-      if (baseType.slice(-1) == "?") {
-        return `${baseType.slice(0, -1)}[]`;
+      // Remove "|null" from end of type if it's an array
+      if (baseType.slice(-5) === "|null") {
+        return `${baseType.slice(0, -5)}[]`;
       } else {
         return `${baseType}[]`;
       }
