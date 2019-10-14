@@ -272,7 +272,9 @@ class PHP extends Generator {
 
     // Add nullable types
     types.forEach(fullyQualifiedType => {
-      if(this.isTypeNullable(fullyQualifiedType, enumMap, models, isExtension)) {
+      if (
+        this.isTypeNullable(fullyQualifiedType, enumMap, models, isExtension)
+      ) {
         types.push("null");
       }
     });
