@@ -254,6 +254,13 @@ class PHP extends Generator {
   }
 
   createTypeString(field, models, enumMap, isExtension) {
+    const types = this.createTypesArray(field, models, enumMap, isExtension);
+
+    // OpenActive SingleValues not allow many of the same type, only allows one
+    return types.length > 1 ? `${types.join("|")}` : types[0];
+  }
+
+  createTypesArray(field, models, enumMap, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
@@ -262,7 +269,7 @@ class PHP extends Generator {
       .filter(type => type !== undefined);
 
     // We get the PHP types from given schema/OA ones,
-    // And we filter out duplication
+    // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
         this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
@@ -273,8 +280,7 @@ class PHP extends Generator {
       throw new Error("No type found for field: " + field.fieldName);
     }
 
-    // OpenActive SingleValues not allow many of the same type, only allows one
-    return types.length > 1 ? `${types.join("|")}` : types[0];
+    return types;
   }
 
   calculateInherits(subClassOf, derivedFrom, model) {
