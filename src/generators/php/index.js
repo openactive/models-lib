@@ -214,13 +214,20 @@ class PHP extends Generator {
       enumMap,
       isExtension
     );
+    let propertyTypes = this.createTypesArray(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
-      propertyType: propertyType
+      propertyType: propertyType,
+      propertyTypes: propertyTypes
     };
 
     if (field.obsolete) {
