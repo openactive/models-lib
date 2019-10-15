@@ -1,6 +1,5 @@
 import Generator from "../../generator";
 import Handlebars from "handlebars";
-import fs from "fs";
 
 const DATA_MODEL_DOCS_URL_PREFIX =
   "https://developer.openactive.io/data-model/types/";
@@ -13,39 +12,51 @@ class PHP extends Generator {
     };
   }
 
-  renderModel(data) {
+  async renderModel(data) {
     const includedInSchema = this.includedInSchema(data.modelType);
-    const convertToCamelCase = this.convertToCamelCase;
 
-    Handlebars.registerHelper("subNamespaceText", function() {
-      if (!includedInSchema) {
-        return new Handlebars.SafeString("\\OA");
-      }
+    if (!includedInSchema) {
+      data["subNamespaceText"] = "\\OA";
+    } else {
+      data["subNamespaceText"] = "\\SchemaOrg";
+    }
 
-      return new Handlebars.SafeString("\\SchemaOrg");
-    });
-
+    let that = this;
     Handlebars.registerHelper("pascalCasePropName", function() {
-      return new Handlebars.SafeString(convertToCamelCase(this.propName));
+      return new Handlebars.SafeString(that.convertToCamelCase(this.propName));
     });
 
     this.modelTemplate =
       this.modelTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/model.php.mustache", "utf8")
-      );
+      (await this.loadTemplate(__dirname + "/model.php.mustache"));
 
     return this.modelTemplate(data);
   }
 
-  renderEnum(data) {
-    this.enumTemplate =
-      this.enumTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/enum.php.mustache", "utf8")
-      );
+  async renderEnum(data) {
+    const includedInSchema = this.includedInSchema(data.modelType);
 
-    return this.enumTemplate(data);
+    if (!includedInSchema) {
+      data["subNamespaceText"] = "\\OA";
+    } else {
+      data["subNamespaceText"] = "\\SchemaOrg";
+    }
+
+    this.enumTemplate = this.enumTemplate || {
+      main: await this.loadTemplate(__dirname + "/enum_main.php.mustache"),
+      sub: await this.loadTemplate(__dirname + "/enum_sub.php.mustache")
+    };
+
+    let response = {
+      [this.getEnumFilename(data.typeName)]: this.enumTemplate.main(data)
+    };
+
+    for (let value of data.values) {
+      let filename = this.getEnumFilename(data.typeName, value.value);
+      response[filename] = this.enumTemplate.sub({ ...data, ...value });
+    }
+
+    return response;
   }
 
   getDirs() {
@@ -62,7 +73,10 @@ class PHP extends Generator {
     return "/models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
   }
 
-  getEnumFilename(typeName) {
+  getEnumFilename(typeName, val) {
+    if (val) {
+      return "/enums/" + typeName + "/" + val + ".php";
+    }
     return "/enums/" + typeName + ".php";
   }
 
