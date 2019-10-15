@@ -122,13 +122,12 @@ class PHP extends Generator {
         return "float";
       case "Number":
         return "decimal";
+      case "Property":
       case "Text":
+      case "URL":
         return "string";
       case "Duration":
         return "DateInterval";
-      case "URL":
-      case "Property":
-        return "Uri";
       case "null":
         return "null";
       default:
