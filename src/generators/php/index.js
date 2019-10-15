@@ -60,17 +60,17 @@ class PHP extends Generator {
   }
 
   getDirs() {
-    return ["models/", "models/SchemaOrg/", "models/OA/", "enums/"];
+    return ["Models/", "Models/SchemaOrg/", "Models/OA/", "enums/"];
   }
 
   getModelFilename(model) {
     if (this.includedInSchema(model.type)) {
       return (
-        "/models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
+        "/Models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
       );
     }
 
-    return "/models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
+    return "/Models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
   }
 
   getEnumFilename(typeName, val) {
