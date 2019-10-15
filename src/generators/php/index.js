@@ -60,7 +60,7 @@ class PHP extends Generator {
   }
 
   getDirs() {
-    return ["Models/", "Models/SchemaOrg/", "Models/OA/", "enums/"];
+    return ["Models/", "Models/SchemaOrg/", "Models/OA/", "Enums/"];
   }
 
   getModelFilename(model) {
@@ -75,9 +75,9 @@ class PHP extends Generator {
 
   getEnumFilename(typeName, val) {
     if (val) {
-      return "/enums/" + typeName + "/" + val + ".php";
+      return "/Enums/" + typeName + "/" + val + ".php";
     }
-    return "/enums/" + typeName + ".php";
+    return "/Enums/" + typeName + ".php";
   }
 
   convertToClassName(value) {
