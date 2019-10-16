@@ -14,6 +14,7 @@ class Generator {
     this.dataModelDirectory = dataModelDirectory;
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
+    this.generatedFiles = [];
 
     if (this.mutateExtensions && typeof this.mutateExtensions === "function") {
       extensions = this.mutateExtensions(extensions);
@@ -26,6 +27,10 @@ class Generator {
     this.getDirs().forEach(dir => {
       fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
     });
+
+    if (this.setupHandlebars && typeof this.setupHandlebars === "function") {
+      await this.setupHandlebars();
+    }
 
     for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
@@ -58,6 +63,12 @@ class Generator {
       }
       await this.savePage(pageContent);
     }
+
+    if (this.createIndexFiles && typeof this.createIndexFiles === "function") {
+      let pageContent = await this.createIndexFiles();
+
+      await this.savePage(pageContent);
+    }
   }
 
   async savePage(pageContent) {
@@ -77,6 +88,8 @@ class Generator {
       await fs
         .writeFile(fullpath, fileContent)
         .then(() => {
+          this.generatedFiles.push(fullpath);
+
           console.log("FILE SAVED: " + filename);
         })
         .catch(err => {
@@ -604,15 +617,15 @@ class Generator {
   }
 
   snakeToCanonicalName(name) {
-    return name.replace(/(?:^|_)([a-z])/, (matches, index, original) => {
-      return matches[1].toUppercase();
+    return name.replace(/(?:^|_)([a-z])/g, matches => {
+      return matches.toUpperCase();
     });
   }
 
   canonicalToSnakeName(name) {
     return name
-      .replace(/(?<=[a-z])([A-Z])/, matches => {
-        return "_" + matches[1];
+      .replace(/(?<=[a-z])([A-Z])/g, matches => {
+        return "_" + matches;
       })
       .toLowerCase();
   }
