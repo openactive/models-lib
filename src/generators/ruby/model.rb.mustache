@@ -8,9 +8,7 @@
 class {{{className}}} < {{{ inherits }}}
 {{#fieldList}}
   # @return {{{propertyType}}}
-  def {{{snakePropName propName}}}
-    @{{{snakePropName propName}}}
-  end
+  attr_reader :{{{snakePropName propName}}}
 
   # @param {{{snakePropName propName}}} {{{propertyType}}}
   # @return void
