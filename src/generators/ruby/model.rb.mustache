@@ -1,0 +1,27 @@
+{{#each namespace_parts}}
+{{{module_start @index}}}module {{{.}}}
+{{/each}}
+{{#with indent}}
+{{#classDoc}}
+  #{{{ . }}}
+{{/classDoc}}
+class {{{className}}} < {{{ inherits }}}
+
+{{#fieldList}}
+  # @return {{{propertyType}}}
+  def {{{snakePropName propName}}}
+    @{{{snakePropName propName}}}
+  end
+
+  # @param {{{snakePropName propName}}} {{{propertyType}}}
+  # @return void
+  def {{{snakePropName propName}}}=({{{snakePropName propName}}})
+    @{{{snakePropName propName}}} = {{{snakePropName propName}}}
+  end
+
+{{/fieldList}}
+end
+{{/with}}
+{{#each namespace_parts}}
+{{{module_end @index}}}end
+{{/each}}

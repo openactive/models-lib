@@ -1,9 +1,11 @@
 import DotNet from "./generators/dot_net";
 import PHP from "./generators/php";
+import Ruby from "./generators/ruby";
 
 let generators = {
   ".NET": DotNet,
-  PHP: PHP
+  PHP: PHP,
+  Ruby: Ruby
 };
 
 const program = require("commander");
