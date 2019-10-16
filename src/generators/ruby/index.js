@@ -37,14 +37,25 @@ class Ruby extends Generator {
       return "  ".repeat(modules - context - 1);
     });
     Handlebars.registerHelper("indent", function(context, options) {
-      // let modules = options.data.root.namespace_parts.length;
-      // let indent = "  ".repeat(modules);
+      let modules = context.data.root.namespace_parts.length;
+      let indent = "  ".repeat(modules);
 
-      console.log(options, context);
+      let content = context.fn(this);
 
-      let data = options.fn(context);
-      console.log(data);
-      return data;
+      let formatted =
+        content
+          .trimEnd()
+          .split("\n")
+          .map(line => {
+            if (line.trimEnd().length > 0) {
+              return `${indent}${line}`;
+            } else {
+              return "";
+            }
+          })
+          .join("\n") + "\n";
+
+      return formatted;
     });
   }
 

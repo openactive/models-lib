@@ -1,12 +1,11 @@
 {{#each namespace_parts}}
 {{{module_start @index}}}module {{{.}}}
 {{/each}}
-{{#with indent}}
+{{#indent}}
 {{#classDoc}}
-  #{{{ . }}}
+#{{{ . }}}
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
-
 {{#fieldList}}
   # @return {{{propertyType}}}
   def {{{snakePropName propName}}}
@@ -21,7 +20,7 @@ class {{{className}}} < {{{ inherits }}}
 
 {{/fieldList}}
 end
-{{/with}}
+{{/indent}}
 {{#each namespace_parts}}
 {{{module_end @index}}}end
 {{/each}}

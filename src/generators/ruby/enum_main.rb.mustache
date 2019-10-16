@@ -3,7 +3,7 @@ require 'typesafe_enum'
 {{#each namespace_parts}}
 {{{module_start @index}}}module {{{.}}}
 {{/each}}
-{{#with module}}
+{{#indent}}
 {{#enumDoc}}
 #{{{ . }}}
 {{/enumDoc}}
@@ -12,7 +12,7 @@ class {{{typeName}}} < TypesafeEnum::Base
   new :{{{value}}}, "{{{memberVal}}}"
 {{/each}}
 end
-{{/with}}
+{{/indent}}
 {{#each namespace_parts}}
 {{{module_end @index}}}end
 {{/each}}
