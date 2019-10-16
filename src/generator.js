@@ -1,5 +1,5 @@
-import { getModels, getEnums, getMetaData } from "@openactive/data-models";
-import { promises as fs, constants as fsConstants } from "fs";
+import { getEnums, getMetaData, getModels } from "@openactive/data-models";
+import { constants as fsConstants, promises as fs } from "fs";
 import fsExtra from "fs-extra";
 import path from "path";
 import request from "sync-request";
@@ -694,7 +694,29 @@ class Generator {
     return prop.indexOf("ArrayOf") == 0;
   }
 
+  // compact a url down, i.e. https://schema.org/SportsActivityLocation to schema:SportsActivityLocation
+  getCompacted(url) {
+    if (!url.match(/^https?:/i)) return url;
+
+    url = url.replace(/^http:/i, "https:");
+
+    for (let key of Object.keys(this.namespaces)) {
+      let val = this.namespaces[key];
+      if (isobject(val)) continue;
+
+      val = val.replace(/^http:/i, "https:");
+
+      if (url.startsWith(val)) {
+        let remainder = url.substr(val.length, -1);
+
+        return `${key}:${remainder}`;
+      }
+    }
+  }
+
   getNamespace(prop) {
+    prop = this.getCompacted(prop);
+
     let props = prop.split(":");
     props.pop();
     return props;
