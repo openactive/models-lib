@@ -255,7 +255,7 @@ _SessionSeries example_
     *   seller
     *   broker
     *   brokerRole
-    *   ustomer
+    *   customer
     *   taxCalculationExcluded
     *   bookingService
     *   totalPaymentDue
@@ -272,11 +272,11 @@ _Slots example_
     *     provider
     *     location
     *     offers
-    *     Event
+    *     event
 
 _Event example_
 
-*   Event.attendeeinstructions exists
+*   Event.attendeeInstructions exists
 *   Event has no properties beyond
     *   type
     *   url
