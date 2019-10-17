@@ -12,58 +12,63 @@
 	"@context": "https://openactive.io/",
 	"type": "Order",
 	"id": "https://openactive.example.com/Orders/12345",
-	"orderedItem": [
-		{
-			"type": "OrderItem",
-			"id": "https://fencing-book/item/12345",
-			"orderItemStatus": "https://openactive.io/OrderConfirmed",
-			"unitTaxSpecification": [
-				{
-					"type": "TaxChargeSpecification",
-					"name": "VAT at 20%",
-					"price": 1.00,
-					"priceCurrency": "GBP",
-					"rate": 0.2
-				}
-			],
-			"orderedItem": {
-				"type": "ScheduledSession",
-				"id": "https://pimlico-fencing-club.example.com/intermediate/12345",
-				"url": "https://pimlico-fencing-club.example.com/intermediate-classes/juniors",
-				"activity": {
-					"type": "Concept",
-					"prefLabel": "Fencing",
-					"id": "https://openactive.io/activity-list#_92808e60-820c-4ee2-89ec-ea8d99d3f528"
-				},
-				"ageRange": {
-					"minValue": 11,
-					"maxValue": 17
-				},
-				"name": "Fencing Fridays! Junior class.",
-				"startDate": "2019-10-04T19:00:00Z",
-				"endDate": "2019-10-04T20:30:00Z",
-				"duration": "PT90M",
-				"location": {
-					"type": "Place",
-					"name": "Pimlico Fencing Club Suite"
-				},
-				"organizer": {
-					"type": "Organization",
-					"name": "Pimlico Fencing Club"
+	"orderedItem": [{
+		"type": "OrderItem",
+		"id": "https://fencing-book/item/12345",
+		"orderItemStatus": "https://openactive.io/OrderConfirmed",
+		"unitTaxSpecification": [{
+			"type": "TaxChargeSpecification",
+			"name": "VAT at 20%",
+			"price": 1.00,
+			"priceCurrency": "GBP",
+			"rate": 0.2
+		}],
+		"orderedItem": {
+			"type": "ScheduledSession",
+			"id": "https://pimlico-fencing-club.example.com/intermediate/12345",
+			"url": "https://pimlico-fencing-club.example.com/intermediate-classes/juniors",
+			"activity": [{
+				"type": "Concept",
+				"prefLabel": "Fencing",
+				"id": "https://openactive.io/activity-list#_92808e60-820c-4ee2-89ec-ea8d99d3f528"
+			}],
+			"ageRange": {
+				"type": "QuantitativeValue",
+				"minValue": 11,
+				"maxValue": 17
+			},
+			"name": "Fencing Fridays! Junior class.",
+			"startDate": "2019-10-04T19:00:00Z",
+			"endDate": "2019-10-04T20:30:00Z",
+			"duration": "PT90M",
+			"location": {
+				"type": "Place",
+				"name": "Pimlico Fencing Club Suite",
+				"address": {
+					"type": "PostalAddress",
+					"addressCountry": "GB",
+					"addressRegion": "London",
+					"addressLocality": "Pimlico",
+					"postalCode": "SW55 P23",
+					"streetAddress": "12345 Sports Suites, Pimlico Road, Pimlico"
 				}
 			},
-			"acceptedOffer": {
-				"type": "Offer",
-				"id": "https://pimlico-fencing-club.example.com/junior-regular/12345",
-				"price": 6.00,
-				"priceCurrency": "GBP",
-				"availableChannel": [
-					"https://openactive.io/OpenBookingPrepayment",
-					"https://openactive.io/OnlinePrepayment"
-				]
+			"organizer": {
+				"type": "Organization",
+				"name": "Pimlico Fencing Club"
 			}
+		},
+		"acceptedOffer": {
+			"type": "Offer",
+			"id": "https://pimlico-fencing-club.example.com/junior-regular/12345",
+			"price": 6.00,
+			"priceCurrency": "GBP",
+			"availableChannel": [
+				"https://openactive.io/OpenBookingPrepayment",
+				"https://openactive.io/OnlinePrepayment"
+			]
 		}
-	],
+	}],
 	"seller": {
 		"type": "Organization",
 		"name": "Pimlico Fencing Club",
@@ -71,7 +76,9 @@
 		"taxMode": "https://openactive/TaxGross",
 		"vatID": "12345",
 		"address": {
-			"addressCountry": "United Kingdom",
+			"type": "PostalAddress",
+			"addressCountry": "GB",
+			"addressRegion": "London",
 			"addressLocality": "Pimlico",
 			"postalCode": "SW55 P23",
 			"streetAddress": "12345 Sports Suites, Pimlico Road, Pimlico"
@@ -97,15 +104,13 @@
 		"price": 6.00,
 		"priceCurrency": "GBP"
 	},
-	"totalPaymentTax": [
-		{
-			"type": "TaxChargeSpecification",
-			"name": "VAT at 20%",
-			"price": 1.00,
-			"priceCurrency": "GBP",
-			"rate": 0.2
-		}
-	],
+	"totalPaymentTax": [{
+		"type": "TaxChargeSpecification",
+		"name": "VAT at 20%",
+		"price": 1.00,
+		"priceCurrency": "GBP",
+		"rate": 0.2
+	}],
 	"orderProposalVersion": "https://pimlico-fencing-club/orders/confirmed/12345"
 }
 ```
