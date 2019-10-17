@@ -287,70 +287,48 @@
 ## Event example
 ```
 {
-
-  "@context":"https://openactive.io/",
-
-   "type":"Event",
-
-   "url":"http://www.example.org/events/1",
-
-   "name":"Tai chi Class",
-
-   “activity”:{
-
-	“type”: “Concept”,
-
-            “prefLabel”: “Tai Chi”,
-
-	“id”:”https://activity-list-editor.openactive.io/_c16df6ed-a4a0-4275-a8c3-1c8cff56856f”
-
-	},
-
-   "description":"A tai chi class intended for beginners",
-
-   "attendeeInstructions":"Please wear trainers and comfortable clothing",
-
-   "startDate":"2017-03-22T20:00:00",
-
-   "duration":"PT60M",
-
-   "organizer":[
-
-      {
-
-         "type":"Organization",
-
-         "url":"http://example.org/orgs/bristol-tai-chi",
-
-         "name":"Bristol Tai Chi"
-
-      }
-
-   ],
-
-   "location":{
-
-      "type":"Place",
-
-      "name":"ExampleCo Gym",
-
-      "address":{
-
-         "type":"PostalAddress",
-
-         "streetAddress":"1 High Street",
-
-         "addressLocality":"Bristol",
-
-         "addressCountry":"GB",
-
-         "addressRegion":"Somerset",
-
-         "postalCode":"BS1 4SD"
-
-      }
-
-   }
+  "@context": "https://openactive.io/",
+  "type": "Event",
+  "url": "http://www.example.org/events/1",
+  "name": "Tai chi Class",
+  "activity": [
+    {
+      "type": "Concept",
+      "prefLabel": "Tai Chi",
+      "id": "https://openactive.io/activity-list#c16df6ed-a4a0-4275-a8c3-1c8cff56856f"
+    }
+  ],
+  "description": "A tai chi class intended for beginners",
+  "attendeeInstructions": "Please wear trainers and comfortable clothing",
+  "startDate": "2017-03-22T20:00:00Z",
+  "duration": "PT60M",
+  "organizer": {
+    "type": "Organization",
+    "url": "http://example.org/orgs/bristol-tai-chi",
+    "name": "Bristol Tai Chi"
+  },
+  "location": {
+    "type": "Place",
+    "name": "ExampleCo Gym",
+    "address": {
+      "type": "PostalAddress",
+      "streetAddress": "1 High Street",
+      "addressLocality": "Bristol",
+      "addressCountry": "GB",
+      "addressRegion": "Somerset",
+      "postalCode": "BS1 4SD"
+    }
+  },
+  "offers": [
+    {
+      "type": "Offer",
+      "identifier": "OX-AD",
+      "name": "Adult",
+      "price": 3.3,
+      "priceCurrency": "GBP",
+      "url": "https://profile.everyoneactive.com/booking?Site=0140&Activities=1402CBP20150217&Culture=en-GB"
+    }
+  ]
 }
 ```
 
@@ -371,8 +349,6 @@
 
 _SessionSeries example_
 
-
-
 *   Order.orderedItem.orderedItem exists
 *   Order.orderedItem.acceptedOffer exists
 *   Order.orderedItem.unitTaxSpecification exists and is Array
@@ -390,8 +366,6 @@ _SessionSeries example_
 
 _Slots example_
 
-
-
 *   FacilityUse.event exists and is array
 *   FacilityUse has no properties beyond
     *     type
@@ -405,8 +379,6 @@ _Slots example_
     *     Event
 
 _Event example_
-
-
 
 *   Event.attendeeinstructions exists
 *   Event has no properties beyond
