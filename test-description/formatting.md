@@ -126,4 +126,4 @@
 
 **URLs**
 
-*   SessionSeries.id, SessionSeries.activity, and SessionSeries.subEvent.url are both correctly-formatted URLs
+*   SessionSeries.id, SessionSeries.activity.id, and SessionSeries.subEvent.url are both correctly-formatted URLs
