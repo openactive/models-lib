@@ -86,7 +86,7 @@
 	},
 	"broker": {
 		"type": "Organization",
-		"schema": "Fencing Booking Partners"
+		"name": "Fencing Booking Partners"
 	},
 	"brokerRole": "https://openactive/AgentBroker",
 	"customer": {
