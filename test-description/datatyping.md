@@ -336,9 +336,9 @@
 _SessionSeries example_
 
 *   Type of top-level object is “Order”
-*   Type of OrderItem is “ScheduledSession”
-*   Type of Offer is “Offer”
-*   Type of Activity is “Concept”
+*   Type of Order.orderedItem[0].orderedItem is “ScheduledSession”
+*   Type of Order.orderedItem[0].acceptedOffer is “Offer”
+*   Type of Order.orderedItem[0].acceptedOffer.activity is “Concept”
 
 _Slots example_
 
