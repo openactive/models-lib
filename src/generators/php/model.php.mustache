@@ -1,0 +1,56 @@
+<?php
+
+namespace OpenActive\Models{{{subNamespaceText}}};
+
+/**
+{{#classDoc}}
+ * {{{ . }}}
+{{/classDoc}}
+ *
+ */
+class {{{className}}} extends {{{ inherits }}}
+{
+{{#fieldList}}
+    /**
+{{#description}}
+     * {{{ . }}}
+{{/description}}
+     *
+{{# codeExample }}
+     * {{{ . }}}
+{{/codeExample }}
+     *
+     * @var {{{propertyType}}}
+     */
+    protected ${{{propName}}};
+
+{{/fieldList}}
+{{#fieldList}}
+    /**
+     * @return {{{propertyType}}}
+     */
+    public function get{{{pascalCasePropName}}}()
+    {
+        return $this->{{{propName}}};
+    }
+
+    /**
+     * @param {{{propertyType}}} ${{{propName}}}
+     * @return void
+     * @throws \Exception If the provided argument is not of a supported type.
+     */
+    public function set{{{pascalCasePropName}}}(${{{propName}}})
+    {
+        $types = array(
+{{# propertyTypes }}
+            "{{{ . }}}",
+{{/propertyTypes }}
+        );
+
+        ${{{propName}}} = self::checkTypes(${{{propName}}}, $types);
+
+        $this->{{{propName}}} = ${{{propName}}};
+    }
+
+{{/fieldList}}
+}

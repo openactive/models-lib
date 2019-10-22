@@ -1,10 +1,10 @@
-import DotNet from "./dot_net";
+import DotNet from "./generators/dot_net";
+import PHP from "./generators/php";
 
 let generators = {
-  ".NET": DotNet
+  ".NET": DotNet,
+  PHP: PHP
 };
-
-const DATA_MODEL_OUTPUT_DIR = "../OpenActive.NET/";
 
 const program = require("commander");
 
@@ -36,19 +36,23 @@ program
 
     let generator = new Generator();
 
-    let extensions = {};
+    let extensions = {
+      ...require("./extensions/_extensions")
+    };
 
     if (options.beta) {
-      extensions["beta"] = {
-        url: "https://www.openactive.io/ns-beta/beta.jsonld",
-        heading: "OpenActive Beta Extension properties",
-        description:
-          "These properties are defined in the [OpenActive Beta Extension](https://openactive.io/ns-beta). The OpenActive Beta Extension is defined as a convenience to help document properties that are in active testing and review by the community. Publishers should not assume that properties in the beta namespace will either be added to the core specification or be included in the namespace over the long term."
+      extensions = {
+        ...extensions,
+        ...require("./extensions/beta.json")
       };
     }
 
-    generator.generateModelClassFiles(options.destination, extensions);
+    generator
+      .generateModelClassFiles(options.destination, extensions)
+      .catch(e => console.error(e));
   });
+
+program.command("schema_models").action(() => {});
 
 program.on("command:*", function() {
   console.error(

@@ -1,4 +1,4 @@
-import Generator from "../generator";
+import Generator from "../../generator";
 import Handlebars from "handlebars";
 import fs from "fs";
 
@@ -24,6 +24,10 @@ class DotNet extends Generator {
       );
 
     return this.enumTemplate(data);
+  }
+
+  getDirs() {
+    return ["/models/", "/enums/"];
   }
 
   getModelFilename(model) {
@@ -102,6 +106,28 @@ class DotNet extends Generator {
     }
   }
 
+  renderCode(code, fieldName, requiredType) {
+    if (typeof code === "object") {
+      return (
+        "<code>\n" +
+        (fieldName ? `"` + fieldName + `": ` : "") +
+        JSON.stringify(code, null, 2) +
+        "\n</code>"
+      );
+    } else {
+      let isNumber =
+        requiredType &&
+        (requiredType.indexOf("Integer") > -1 ||
+          requiredType.indexOf("Float") > -1);
+      return (
+        "<code>\n" +
+        (fieldName ? `"` + fieldName + `": ` : "") +
+        (isNumber ? code : `"` + code + `"`) +
+        "\n</code>"
+      );
+    }
+  }
+
   renderJsonConverter(field, propertyType) {
     if (propertyType == "TimeSpan?") {
       return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
@@ -131,7 +157,8 @@ class DotNet extends Generator {
 
     if (field.obsolete) {
       return {
-        description: this.createDescriptionWithExample(field),
+        description: this.createDescription(field),
+        codeExample: this.createCodeExample(field),
         decorators: [
           `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
         ],
@@ -149,7 +176,8 @@ class DotNet extends Generator {
       }
 
       return {
-        description: this.createDescriptionWithExample(field),
+        codeExample: this.createCodeExample(field),
+        description: this.createDescription(field),
         decorators: [
           `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
           jsonConverter
@@ -202,7 +230,8 @@ class DotNet extends Generator {
       }
     } else {
       // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-      throw new Error("No base class specified for: " + model.type);
+      // throw new Error("No base class specified for: " + model.type);
+      return "None";
     }
   }
 }

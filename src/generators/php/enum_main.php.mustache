@@ -1,0 +1,16 @@
+<?php
+
+namespace OpenActive\Enums;
+
+/**
+{{#enumDoc}}
+ * {{{ . }}}
+{{/enumDoc}}
+ *
+ */
+class {{{typeName}}}
+{
+{{#each values}}
+    const {{{value}}} = \OpenActive\Enums{{{@root.subNamespaceText}}}\\{{{@root.typeName}}}\\{{{value}}}::class;
+{{/each}}
+}
