@@ -73,7 +73,7 @@
 		"type": "Organization",
 		"name": "Pimlico Fencing Club",
 		"legalName": "Pimlico Fencing Club (PFC)",
-		"taxMode": "https://openactive/TaxGross",
+		"taxMode": "https://openactive.io/TaxGross",
 		"vatID": "12345",
 		"address": {
 			"type": "PostalAddress",
@@ -88,7 +88,7 @@
 		"type": "Organization",
 		"name": "Fencing Booking Partners"
 	},
-	"brokerRole": "https://openactive/AgentBroker",
+	"brokerRole": "https://openactive.io/AgentBroker",
 	"customer": {
 		"type": "Person",
 		"name": "Errol Flynn",
