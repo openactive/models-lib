@@ -319,7 +319,7 @@
     *   Accessor for FacilityUse.location.name returns correct value
     *   Accessor for FacilityUse.event[0].startDate returns correct value
 *   _Event example_
-    *   Accessor for Event.location.addressRegion returns correct value
+    *   Accessor for Event.location.address.addressRegion returns correct value
 
 **Object generated and object derived from parsing text above pass equality test**
 
