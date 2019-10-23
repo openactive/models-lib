@@ -60,24 +60,24 @@ class PHP extends Generator {
   }
 
   getDirs() {
-    return ["models/", "models/SchemaOrg/", "models/OA/", "enums/"];
+    return ["Models/", "Models/SchemaOrg/", "Models/OA/", "Enums/"];
   }
 
   getModelFilename(model) {
     if (this.includedInSchema(model.type)) {
       return (
-        "/models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
+        "/Models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
       );
     }
 
-    return "/models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
+    return "/Models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
   }
 
   getEnumFilename(typeName, val) {
     if (val) {
-      return "/enums/" + typeName + "/" + val + ".php";
+      return "/Enums/" + typeName + "/" + val + ".php";
     }
-    return "/enums/" + typeName + ".php";
+    return "/Enums/" + typeName + ".php";
   }
 
   convertToClassName(value) {
@@ -122,13 +122,12 @@ class PHP extends Generator {
         return "float";
       case "Number":
         return "decimal";
+      case "Property":
       case "Text":
+      case "URL":
         return "string";
       case "Duration":
         return "DateInterval";
-      case "URL":
-      case "Property":
-        return "Uri";
       case "null":
         return "null";
       default:
@@ -136,7 +135,7 @@ class PHP extends Generator {
           if (this.includedInSchema(enumMap[typeName].namespace)) {
             return "Schema.NET." + this.convertToCamelCase(typeName);
           } else {
-            return this.convertToCamelCase(typeName);
+            return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
           }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
@@ -230,13 +229,20 @@ class PHP extends Generator {
       enumMap,
       isExtension
     );
+    let propertyTypes = this.createTypesArray(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
-      propertyType: propertyType
+      propertyType: propertyType,
+      propertyTypes: propertyTypes
     };
 
     if (field.obsolete) {

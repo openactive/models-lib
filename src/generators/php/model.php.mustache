@@ -37,9 +37,18 @@ class {{{className}}} extends {{{ inherits }}}
     /**
      * @param {{{propertyType}}} ${{{propName}}}
      * @return void
+     * @throws \Exception If the provided argument is not of a supported type.
      */
     public function set{{{pascalCasePropName}}}(${{{propName}}})
     {
+        $types = array(
+{{# propertyTypes }}
+            "{{{ . }}}",
+{{/propertyTypes }}
+        );
+
+        ${{{propName}}} = self::checkTypes(${{{propName}}}, $types);
+
         $this->{{{propName}}} = ${{{propName}}};
     }
 
