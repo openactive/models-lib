@@ -12,10 +12,24 @@ class Ruby extends Generator {
     };
   }
 
+  // using inplace of standard namespace
+  getBasicNamespace(prop) {
+    if (this.includedInSchema(prop)) {
+      return ["schema"];
+    }
+    return [];
+  }
+
   getNamespaceParts(prop) {
-    return ["OpenActive", "Models", ...this.getNamespace(prop)].map(name => {
-      return this.snakeToCanonicalName(name);
-    });
+    return ["OpenActive", "Models", ...this.getBasicNamespace(prop)].map(
+      name => {
+        return this.snakeToCanonicalName(name);
+      }
+    );
+  }
+
+  formatNamespace(parts) {
+    return parts.map(part => `::${part}`).join("");
   }
 
   setupHandlebars() {
@@ -42,32 +56,24 @@ class Ruby extends Generator {
 
       let content = context.fn(this);
 
-      let formatted =
-        content
-          .trimEnd()
-          .split("\n")
-          .map(line => {
-            if (line.trimEnd().length > 0) {
-              return `${indent}${line}`;
-            } else {
-              return "";
-            }
-          })
-          .join("\n") + "\n";
+      let formatted = content
+        .trimEnd()
+        .split("\n")
+        .map(line => {
+          if (line.trimEnd().length > 0) {
+            return `${indent}${line}`;
+          } else {
+            return "";
+          }
+        })
+        .map(line => `${line}\n`)
+        .join("");
 
       return formatted;
     });
   }
 
   async renderModel(data) {
-    const includedInSchema = this.includedInSchema(data.modelType);
-
-    if (!includedInSchema) {
-      data["subNamespaceText"] = "\\OA";
-    } else {
-      data["subNamespaceText"] = "\\SchemaOrg";
-    }
-
     data["namespace_parts"] = this.getNamespaceParts(data.modelType);
 
     this.modelTemplate =
@@ -79,12 +85,6 @@ class Ruby extends Generator {
 
   async renderEnum(data) {
     const includedInSchema = this.includedInSchema(data.typeName);
-
-    if (!includedInSchema) {
-      data["subNamespaceText"] = "\\OA";
-    } else {
-      data["subNamespaceText"] = "\\SchemaOrg";
-    }
 
     data["namespace_parts"] = this.getNamespaceParts(data.typeName);
 
@@ -99,16 +99,33 @@ class Ruby extends Generator {
     return response;
   }
 
+  createIndexFiles() {
+    return {
+      "/files_index.json": JSON.stringify(this.generatedFiles)
+    };
+  }
+
   getDirs() {
-    return ["models/", "models/SchemaOrg/", "models/OA/", "enums/"];
+    return ["models/", "models/schema/", "enums/"];
   }
 
   getModelFilename(model) {
-    if (this.includedInSchema(model.type)) {
-      return "/models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".rb";
-    }
+    let parts = [
+      "Models",
+      ...this.getBasicNamespace(model),
+      this.getPropNameFromFQP(model)
+    ];
 
-    return "/models/OA/" + this.getPropNameFromFQP(model.type) + ".rb";
+    parts = parts
+      .filter(val => !!val)
+      .map(name => {
+        console.log(name);
+        return this.canonicalToSnakeName(name);
+      });
+
+    console.log(parts);
+
+    return "/" + parts.join("/") + ".rb";
   }
 
   getEnumFilename(typeName, val) {
@@ -359,10 +376,10 @@ class Ruby extends Generator {
 
       if (this.includedInSchema(model.type)) {
         // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::SchemaOrg::${subClassOfName}`;
+        return `::OpenActive::Models::Schema::${subClassOfName}`;
       }
 
-      return `::OpenActive::Models::OA::${subClassOfName}`;
+      return `::OpenActive::Models::${subClassOfName}`;
     }
 
     if (derivedFrom) {
@@ -371,12 +388,12 @@ class Ruby extends Generator {
       );
 
       if (this.includedInSchema(derivedFrom)) {
-        return `::OpenActive::Models::SchemaOrg::${derivedFromName}`;
+        return `::OpenActive::Models::Schema::${derivedFromName}`;
       }
 
       if (this.includedInSchema(model.type)) {
         // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::SchemaOrg::${derivedFromName}`;
+        return `::OpenActive::Models::Schema::${derivedFromName}`;
       }
 
       // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD

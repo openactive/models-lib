@@ -7,10 +7,6 @@
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
 {{#fieldList}}
-  @{{{snakePropName propName}}} = nil
-{{/fieldList}}
-
-{{#fieldList}}
   # @return {{{propertyType}}}
   attr_reader :{{{snakePropName propName}}}
 

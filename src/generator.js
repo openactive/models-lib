@@ -39,7 +39,7 @@ class Generator {
 
         let pageContent = await this.createModelFile(model, extensions);
         if (!isobject(pageContent)) {
-          let pageName = this.getModelFilename(model);
+          let pageName = this.getModelFilename(typeName);
 
           pageContent = {
             [pageName]: pageContent
@@ -696,6 +696,7 @@ class Generator {
 
   // compact a url down, i.e. https://schema.org/SportsActivityLocation to schema:SportsActivityLocation
   getCompacted(url) {
+    if (!url) return "";
     if (!url.match(/^https?:/i)) return url;
 
     url = url.replace(/^http:/i, "https:");
@@ -714,10 +715,15 @@ class Generator {
     }
   }
 
-  getNamespace(prop) {
+  getFullNamespace(prop) {
     prop = this.getCompacted(prop);
 
     let props = prop.split(":");
+    return props;
+  }
+
+  getNamespace(prop) {
+    let props = this.getFullNamespace(prop);
     props.pop();
     return props;
   }
