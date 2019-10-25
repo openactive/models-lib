@@ -41,7 +41,7 @@ Construct the above using model, and assert that, both in JSON output (serialisa
   "type": "Event",
   "id": "https://openactive.example.com/Orders/12345",
   "beta:formattedDescription": "Beta event",
-  "beta:availableChannel": "https://openactive.io/ns-beta#OnlinePrepayment",
+  "beta:facilitySetting": "https://openactive.io/ns-beta#IndoorFacility",
   "beta:attendeeCount": 0,
   "alternateName": "Schema.org property",
   "offers": [
@@ -57,12 +57,14 @@ Construct the above using model, and assert that, both in JSON output (serialisa
 Construct the above using model, and assert that, both in JSON output (serialisation) and in class output (deserialisation):
 - "beta:formattedDescription" is set to value "Beta event"
 - "beta:attendeeCount" is set to value 0
-- "beta:availableChannel" is set to "https://openactive.io/ns-beta#OnlinePrepayment"
+- "beta:facilitySetting" is set to "https://openactive.io/ns-beta#IndoorFacility"
 - First offer is of type "beta:IndicativeOffer"
 - Price is rendered as 0 not 0.0
 - priceCurrency is not be included in output
 - "alternateName" is set to "Schema.org property"
 - @context = [ "https://openactive.io/", "https://openactive.io/ns-beta" ]
+
+(Note you will need to rebuild your model to get the updated beta context which now includes the facilitySetting on Event, which was only added recently)
 
 
 ## Event with beta example and extension example
