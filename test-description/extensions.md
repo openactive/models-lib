@@ -30,7 +30,7 @@ Construct the above using model, and assert that, both in JSON output (serialisa
 
 
 
-# Event with beta example
+## Event with beta example
 
 ```
 {
@@ -54,7 +54,7 @@ Construct the above using model, and assert that, both in JSON output (serialisa
 }
 ```
 
-Construct the above using model, and assert that:
+Construct the above using model, and assert that, both in JSON output (serialisation) and in class output (deserialisation):
 - "beta:formattedDescription" is set to value "Beta event"
 - "beta:attendeeCount" is set to value 0
 - "beta:availableChannel" is set to "https://openactive.io/ns-beta#OnlinePrepayment"
@@ -65,7 +65,7 @@ Construct the above using model, and assert that:
 - @context = [ "https://openactive.io/", "https://openactive.io/ns-beta" ]
 
 
-# Event with beta example and extension example
+## Event with beta example and extension example
 
 ```
 {
