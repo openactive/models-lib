@@ -251,10 +251,7 @@ class PHP extends Generator {
     if (field.obsolete) {
       return {
         ...obj,
-        decorators: [
-          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
-        ],
-        property: `public override ${propertyType} ${propertyName} { get; set; }`
+        isObsolete: true,
       };
     } else {
       let methodType = "";
