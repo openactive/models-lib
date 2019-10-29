@@ -5,7 +5,7 @@ require 'typesafe_enum'
 {{/each}}
 {{#indent}}
 {{#enumDoc}}
-#{{{ . }}}
+# {{{ . }}}
 {{/enumDoc}}
 class {{{typeName}}} < TypesafeEnum::Base
 {{#each values}}

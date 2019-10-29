@@ -3,19 +3,15 @@
 {{/each}}
 {{#indent}}
 {{#classDoc}}
-#{{{ . }}}
+# {{{ . }}}
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
 {{#fieldList}}
   # @return {{{propertyType}}}
-  attr_reader :{{{snakePropName propName}}}
+  attr_accessor :{{{snakePropName propName}}}
+{{#unless @last}}
 
-  # @param {{{snakePropName propName}}} {{{propertyType}}}
-  # @return void
-  def {{{snakePropName propName}}}=({{{snakePropName propName}}})
-    @{{{snakePropName propName}}} = {{{snakePropName propName}}}
-  end
-
+{{/unless}}
 {{/fieldList}}
 end
 {{/indent}}

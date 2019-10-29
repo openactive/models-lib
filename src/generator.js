@@ -16,13 +16,16 @@ class Generator {
     this.namespaces = getMetaData().namespaces;
     this.generatedFiles = [];
 
+    this.reindexEnums();
+
     if (this.mutateExtensions && typeof this.mutateExtensions === "function") {
       extensions = this.mutateExtensions(extensions);
     }
 
     await this.loadExtensions(extensions);
 
-    // fs.writeFileSync("models.json", JSON.stringify(this.models, null, 2));
+    await fs.writeFile("models.json", JSON.stringify(this.models, null, 2));
+    await fs.writeFile("enums.json", JSON.stringify(this.enumMap, null, 2));
 
     this.getDirs().forEach(dir => {
       fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
@@ -39,7 +42,7 @@ class Generator {
 
         let pageContent = await this.createModelFile(model, extensions);
         if (!isobject(pageContent)) {
-          let pageName = this.getModelFilename(typeName);
+          let pageName = this.getModelFilename(model);
 
           pageContent = {
             [pageName]: pageContent
@@ -71,6 +74,76 @@ class Generator {
     }
   }
 
+  get sortedModels() {
+    let models = Object.keys(this.models);
+    return models.sort((a, b) => {
+      let aChain = this.createModelChain(a);
+      let bChain = this.createModelChain(b);
+
+      console.log(aChain, bChain);
+
+      return aChain.length - bChain.length;
+    });
+  }
+
+  get entities() {
+    return {
+      ...this.models,
+      ...this.enumMap
+    };
+  }
+
+  /**
+   * returns an array listing every inheritance route
+   *
+   * @code createModelTree("schema:PaymentCard")
+   *        [ [ 'schema:PaymentCard',
+   *           'schema:PaymentMethod',
+   *           'schema:Enumeration',
+   *           'schema:Intangible',
+   *           'schema:Thing' ],
+   *          [ 'schema:PaymentCard',
+   *           'schema:FinancialProduct',
+   *           'schema:Service',
+   *           'schema:Intangible',
+   *           'schema:Thing' ] ]
+   * ```
+   *
+   * @param modelName
+   * @param tree internal use only
+   * @param path internal use only
+   * @returns {Array}
+   */
+  createModelTree(modelName, tree = [], path = []) {
+    modelName = this.getCompacted(modelName);
+
+    let model = this.models[modelName];
+    let parentNames = [];
+
+    if (model) {
+      parentNames = model.subClassesOf;
+      if (!parentNames && model.derivedFrom) {
+        parentNames = [model.derivedFrom];
+      }
+    } else if (this.enumMap[modelName]) {
+      // this is an enumeration
+      parentNames = ["schema:Enumeration"];
+    }
+
+    path = [...path, modelName];
+
+    if (!parentNames || parentNames.length === 0) {
+      tree.push(path);
+      return tree;
+    }
+
+    for (let parent of parentNames) {
+      this.createModelTree(parent, tree, path);
+    }
+
+    return tree;
+  }
+
   async savePage(pageContent) {
     for (let filename of Object.keys(pageContent)) {
       let fileContent = pageContent[filename];
@@ -88,7 +161,7 @@ class Generator {
       await fs
         .writeFile(fullpath, fileContent)
         .then(() => {
-          this.generatedFiles.push(fullpath);
+          this.generatedFiles.push(filename);
 
           console.log("FILE SAVED: " + filename);
         })
@@ -136,13 +209,15 @@ class Generator {
       extensions[prefix].graph = compacted["@graph"];
     }
 
-    Object.keys(extensions).forEach(async prefix => {
+    for (let prefix of Object.keys(extensions)) {
       let extension = extensions[prefix];
       if (extension.graph) {
         await this.augmentWithExtension(extension.graph, extension.url, prefix);
         this.augmentEnumsWithExtension(extension.graph, extension.url, prefix);
       }
-    });
+    }
+
+    await this.fillAugmentedSubclasses();
   }
 
   storeNamespaces(context) {
@@ -156,6 +231,8 @@ class Generator {
   }
 
   createModelData(model, extensions) {
+    console.log("Generating model ", model.type);
+
     let fullFields = this.obsoleteNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields)
       .sort(this.compareFields)
@@ -191,6 +268,8 @@ class Generator {
   }
 
   createEnumData(typeName, thisEnum) {
+    console.log("Generating enum ", typeName);
+
     let doc = this.createEnumDoc(typeName, thisEnum);
 
     let data = {
@@ -307,18 +386,18 @@ class Generator {
 
         let subClasses = node.subClassOf;
 
-        let model =
-          subClasses.length > 0
-            ? {
-                type: node.id,
-                // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
-                subClassOf: this.models[subClasses[0]]
-                  ? "#" + this.getPropNameFromFQP(subClasses[0])
-                  : this.expandPrefix(subClasses[0], false)
-              }
-            : {
-                type: node.id
-              };
+        let model = {
+          type: node.id,
+          extension: extensionPrefix
+        };
+
+        if (subClasses.length > 0) {
+          Object.assign(model, {
+            // Include first relevant subClass in list (note this does not currently support multiple inheritance), which is discouraged in OA modelling anyway
+            rawSubClasses: subClasses
+          });
+        }
+
         // models[this.getPropNameFromFQP(node.id)] = model;
         this.models[node.id] = model;
       }
@@ -370,14 +449,49 @@ class Generator {
     });
   }
 
+  // this fixes up the enums coming from data-models
+  reindexEnums() {
+    let enums = {};
+
+    for (let label of Object.keys(this.enumMap)) {
+      let thisEnum = this.enumMap[label];
+
+      let id;
+
+      if (thisEnum.extensionPrefix) {
+        id = `${thisEnum.extensionPrefix}:${label}`;
+      } else {
+        id = this.getCompacted(thisEnum.namespace + label);
+      }
+
+      enums[id] = thisEnum;
+    }
+
+    this.enumMap = enums;
+  }
+
   augmentEnumsWithExtension(extModelGraph, extensionUrl, extensionPrefix) {
     extModelGraph.forEach(node => {
-      if (
-        node.type === "Class" &&
-        Array.isArray(node.subClassOf) &&
-        node.subClassOf[0] == "schema:Enumeration"
-      ) {
-        this.enumMap[node.label] = {
+      if (!node.subClassOf) {
+        node.subClassOf = [];
+      } else if (!Array.isArray(node.subClassOf)) {
+        node.subClassOf = [node.subClassOf];
+      }
+
+      if (node.type === "Class" && node.subClassOf[0] == "schema:Enumeration") {
+        let label = node.label || node["rdfs:label"];
+
+        let id = node.id;
+        if (/^oa:/.test(id)) {
+          id = this.getPropNameFromFQP(id);
+        }
+
+        // if (/^schema:/.test(node.id)) {
+        //   label = node.id;
+        // }
+
+        this.enumMap[id] = {
+          label: label,
           namespace: this.namespaces[extensionPrefix],
           comment: node.comment,
           values: extModelGraph
@@ -387,6 +501,48 @@ class Generator {
         };
       }
     });
+  }
+
+  fillAugmentedSubclasses() {
+    // first of all normalize down the parents
+    for (let typeName of Object.keys(this.models)) {
+      let model = this.models[typeName];
+
+      if (!model.rawSubClasses) continue;
+
+      let subclasses = model.rawSubClasses.map(subclass => {
+        let compacted = this.getCompacted(subclass);
+        if (this.models[compacted]) {
+          // return "#" + this.getPropNameFromFQP(subclass)
+          return subclass;
+        }
+        return this.expandPrefix(subclass, false);
+      });
+
+      model.subClassesOf = subclasses;
+    }
+
+    // another pass utilising the data just filled in above to pick the primary parent.
+    for (let typeName of Object.keys(this.models)) {
+      let model = this.models[typeName];
+
+      if (!model.subClassesOf) continue;
+
+      let tree = this.createModelTree(typeName);
+
+      if (tree.length === 1) {
+        model.subClassOf = tree[0][1];
+        continue;
+      }
+
+      // filter off any enum paths as these are invalid for class inheritance
+      tree = tree.filter(path => {
+        return !path.includes("schema:Enumeration");
+      });
+
+      //todo: better path picking, eventually multi-inheritance
+      model.subClassOf = tree[0][1];
+    }
   }
 
   expandPrefix(prop, isArray) {
@@ -698,6 +854,7 @@ class Generator {
   // compact a url down, i.e. https://schema.org/SportsActivityLocation to schema:SportsActivityLocation
   getCompacted(url) {
     if (!url) return "";
+    if (/^ArrayOf#/.test(url)) url = url.replace(/^ArrayOf#/, "");
     if (!url.match(/^https?:/i)) return url;
 
     url = url.replace(/^http:/i, "https:");
@@ -709,7 +866,15 @@ class Generator {
       val = val.replace(/^http:/i, "https:");
 
       if (url.startsWith(val)) {
-        let remainder = url.substr(val.length, -1);
+        let remainder = url.substr(val.length);
+
+        if (key === "oa") {
+          return remainder;
+        }
+
+        if (remainder.length === 0 || /^[/#:]$/.test(remainder)) {
+          return key;
+        }
 
         return `${key}:${remainder}`;
       }
@@ -741,9 +906,6 @@ class Generator {
   }
 
   getPropNameFromFQP(prop) {
-    if (prop && prop.toLowerCase().indexOf("event") >= 0) {
-      console.log(prop);
-    }
     if (prop === null || prop === undefined) return null;
     //Just the characters after the last /, # or :
     let match = prop.match(/[/#:]/g);

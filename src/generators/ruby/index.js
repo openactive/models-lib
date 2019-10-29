@@ -56,18 +56,18 @@ class Ruby extends Generator {
 
       let content = context.fn(this);
 
-      let formatted = content
-        .trimEnd()
-        .split("\n")
-        .map(line => {
-          if (line.trimEnd().length > 0) {
-            return `${indent}${line}`;
-          } else {
-            return "";
-          }
-        })
-        .map(line => `${line}\n`)
-        .join("");
+      let formatted =
+        content
+          .trimEnd()
+          .split("\n")
+          .map(line => {
+            if (line.trimEnd().length > 0) {
+              return `${indent}${line}`;
+            } else {
+              return "";
+            }
+          })
+          .join("\n") + "\n";
 
       return formatted;
     });
@@ -101,7 +101,7 @@ class Ruby extends Generator {
 
   createIndexFiles() {
     return {
-      "/files_index.json": JSON.stringify(this.generatedFiles)
+      "/files_index.json": JSON.stringify(this.generatedFiles, null, 2)
     };
   }
 
@@ -111,9 +111,9 @@ class Ruby extends Generator {
 
   getModelFilename(model) {
     let parts = [
-      "Models",
-      ...this.getBasicNamespace(model),
-      this.getPropNameFromFQP(model)
+      "models",
+      ...this.getBasicNamespace(model.type),
+      this.getPropNameFromFQP(model.type)
     ];
 
     parts = parts
@@ -123,16 +123,24 @@ class Ruby extends Generator {
         return this.canonicalToSnakeName(name);
       });
 
-    console.log(parts);
-
     return "/" + parts.join("/") + ".rb";
   }
 
-  getEnumFilename(typeName, val) {
-    if (val) {
-      return "/enums/" + typeName + "/" + val + ".rb";
-    }
-    return "/enums/" + typeName + ".rb";
+  getEnumFilename(typeName) {
+    let parts = [
+      "enums",
+      ...this.getBasicNamespace(typeName),
+      this.getPropNameFromFQP(typeName)
+    ];
+
+    parts = parts
+      .filter(val => !!val)
+      .map(name => {
+        console.log(name);
+        return this.canonicalToSnakeName(name);
+      });
+
+    return "/" + parts.join("/") + ".rb";
   }
 
   convertToClassName(value) {
@@ -164,6 +172,7 @@ class Ruby extends Generator {
 
   getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
         return "bool";
@@ -187,12 +196,12 @@ class Ruby extends Generator {
       case "null":
         return "null";
       default:
-        if (enumMap[typeName]) {
-          if (this.includedInSchema(enumMap[typeName].namespace)) {
-            return "Schema.NET." + this.convertToCamelCase(typeName);
-          } else {
-            return this.convertToCamelCase(typeName);
-          }
+        if (enumMap[compactedTypeName]) {
+          // if (this.includedInSchema(enumMap[typeName].namespace)) {
+          //   return "Schema.NET." + this.convertToCamelCase(typeName);
+          // } else {
+          return this.convertToCamelCase(typeName);
+          // }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
         } else if (isExtension) {
@@ -203,13 +212,19 @@ class Ruby extends Generator {
             this.convertToCamelCase(typeName)
           );
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName);
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
         }
     }
   }
 
   isTypeNullable(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
       case "Date":
@@ -227,13 +242,20 @@ class Ruby extends Generator {
       default:
         if (enumMap[typeName]) {
           return true;
+        } else if (enumMap[compactedTypeName]) {
+          return true;
         } else if (modelsMap[typeName]) {
           return false;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           return false;
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName);
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
         }
     }
   }
