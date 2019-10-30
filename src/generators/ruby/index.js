@@ -84,16 +84,16 @@ class Ruby extends Generator {
   }
 
   async renderEnum(data) {
-    const includedInSchema = this.includedInSchema(data.typeName);
+    const includedInSchema = this.includedInSchema(data.enumType);
 
-    data["namespace_parts"] = this.getNamespaceParts(data.typeName);
+    data["namespace_parts"] = this.getNamespaceParts(data.enumType);
 
     this.enumTemplate = this.enumTemplate || {
       main: await this.loadTemplate(__dirname + "/enum_main.rb.mustache")
     };
 
     let response = {
-      [this.getEnumFilename(data.typeName)]: this.enumTemplate.main(data)
+      [this.getEnumFilename(data)]: this.enumTemplate.main(data)
     };
 
     return response;
@@ -126,17 +126,16 @@ class Ruby extends Generator {
     return "/" + parts.join("/") + ".rb";
   }
 
-  getEnumFilename(typeName) {
+  getEnumFilename(thisEnum) {
     let parts = [
       "enums",
-      ...this.getBasicNamespace(typeName),
-      this.getPropNameFromFQP(typeName)
+      ...this.getBasicNamespace(thisEnum.enumType),
+      this.getPropNameFromFQP(thisEnum.enumType)
     ];
 
     parts = parts
       .filter(val => !!val)
       .map(name => {
-        console.log(name);
         return this.canonicalToSnakeName(name);
       });
 

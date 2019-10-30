@@ -24,6 +24,12 @@ class Generator {
 
     await this.loadExtensions(extensions);
 
+    for (let modelName of Object.keys(this.models)) {
+      let model = this.models[modelName];
+
+      model.tree = this.createModelTree(modelName);
+    }
+
     await fs.writeFile("models.json", JSON.stringify(this.models, null, 2));
     await fs.writeFile("enums.json", JSON.stringify(this.enumMap, null, 2));
 
@@ -35,7 +41,7 @@ class Generator {
       await this.setupHandlebars();
     }
 
-    for (let typeName of Object.keys(this.models)) {
+    for (let typeName of this.sortedModels) {
       let model = this.models[typeName];
       if (typeName != "undefined") {
         //ignores "model_list.json" (which appears to be ignored everywhere else)
@@ -80,9 +86,13 @@ class Generator {
       let aChain = this.createModelChain(a);
       let bChain = this.createModelChain(b);
 
-      console.log(aChain, bChain);
+      let result = aChain.length - bChain.length;
 
-      return aChain.length - bChain.length;
+      if (result === 0) {
+        return a > b;
+      }
+
+      return result;
     });
   }
 
@@ -91,6 +101,28 @@ class Generator {
       ...this.models,
       ...this.enumMap
     };
+  }
+
+  createModelChain(modelName) {
+    let model = this.entities[modelName];
+    if (!model) return null;
+
+    let parentName = this.getCompacted(model.subClassOf || model.derivedFrom);
+
+    if (parentName) {
+      if (parentName[0] === "#") {
+        parentName = parentName.substr(1);
+
+        // if (this.includedInSchema(modelName)) {
+        //   parentName = 'schema:'+parentName;
+        // }
+      }
+      let parent = this.createModelChain(parentName);
+      if (parent) {
+        return [...parent, modelName];
+      }
+    }
+    return [modelName];
   }
 
   /**
@@ -110,38 +142,55 @@ class Generator {
    * ```
    *
    * @param modelName
-   * @param tree internal use only
-   * @param path internal use only
    * @returns {Array}
    */
-  createModelTree(modelName, tree = [], path = []) {
-    modelName = this.getCompacted(modelName);
+  createModelTree(modelName) {
+    const _createModelTree = (modelName, tree = [], path = []) => {
+      modelName = this.getCompacted(modelName);
 
-    let model = this.models[modelName];
-    let parentNames = [];
+      let model = this.models[modelName];
+      let parentNames = [];
 
-    if (model) {
-      parentNames = model.subClassesOf;
-      if (!parentNames && model.derivedFrom) {
-        parentNames = [model.derivedFrom];
+      if (model) {
+        parentNames = model.subClassesOf;
+        // todo: perhaps remove included in schema check
+        if (
+          !parentNames &&
+          model.derivedFrom &&
+          this.includedInSchema(model.derivedFrom)
+        ) {
+          parentNames = [model.derivedFrom];
+        }
+
+        if (parentNames) {
+          // filter off classes that we don't have (i.e. rdfs:Class)
+          parentNames = parentNames.filter(parent => {
+            let compacted = this.getCompacted(parent);
+            let model = this.models[compacted];
+
+            return !!model;
+          });
+        }
+      } else if (this.enumMap[modelName]) {
+        // this is an enumeration
+        parentNames = ["schema:Enumeration"];
       }
-    } else if (this.enumMap[modelName]) {
-      // this is an enumeration
-      parentNames = ["schema:Enumeration"];
-    }
 
-    path = [...path, modelName];
+      path = [...path, modelName];
 
-    if (!parentNames || parentNames.length === 0) {
-      tree.push(path);
+      if (!parentNames || parentNames.length === 0) {
+        tree.push(path);
+        return tree;
+      }
+
+      for (let parent of parentNames) {
+        _createModelTree(parent, tree, path);
+      }
+
       return tree;
-    }
+    };
 
-    for (let parent of parentNames) {
-      this.createModelTree(parent, tree, path);
-    }
-
-    return tree;
+    return _createModelTree(modelName);
   }
 
   async savePage(pageContent) {
@@ -273,7 +322,8 @@ class Generator {
     let doc = this.createEnumDoc(typeName, thisEnum);
 
     let data = {
-      typeName: typeName,
+      enumType: typeName,
+      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
       enumDoc: doc,
       values: thisEnum.values.map(value => ({
         memberVal: thisEnum.namespace + value,
@@ -530,18 +580,15 @@ class Generator {
 
       let tree = this.createModelTree(typeName);
 
-      if (tree.length === 1) {
-        model.subClassOf = tree[0][1];
-        continue;
-      }
-
       // filter off any enum paths as these are invalid for class inheritance
       tree = tree.filter(path => {
         return !path.includes("schema:Enumeration");
       });
 
-      //todo: better path picking, eventually multi-inheritance
-      model.subClassOf = tree[0][1];
+      if (tree.length > 0) {
+        //todo: better path picking, eventually multi-inheritance
+        model.subClassOf = tree[0][1];
+      }
     }
   }
 
