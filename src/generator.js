@@ -89,7 +89,12 @@ class Generator {
       let result = aChain.length - bChain.length;
 
       if (result === 0) {
-        return a > b;
+        let aName = this.getPropNameFromFQP(a);
+        let bName = this.getPropNameFromFQP(b);
+
+        if (aName < bName) return -1;
+        if (aName > bName) return 1;
+        return 0;
       }
 
       return result;
