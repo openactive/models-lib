@@ -6,11 +6,15 @@
 # {{{ . }}}
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
-  include ::OpenActive::Concerns::Attribute
+  def type
+    "{{modelType}}"
+  end
+  property :type, as: "type"
+
 {{#fieldList}}
   # @return {{{propertyType}}}
   attr_accessor :{{{snakePropName propName}}}
-  attribute :{{{snakePropName propName}}}
+  property :{{{snakePropName propName}}}, as: "{{propName}}"
 {{#unless @last}}
 
 {{/unless}}
