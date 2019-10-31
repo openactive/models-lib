@@ -6,9 +6,11 @@
 # {{{ . }}}
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
+  include ::OpenActive::Concerns::Attribute
 {{#fieldList}}
   # @return {{{propertyType}}}
   attr_accessor :{{{snakePropName propName}}}
+  attribute :{{{snakePropName propName}}}
 {{#unless @last}}
 
 {{/unless}}
