@@ -210,7 +210,7 @@ class Ruby extends Generator {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
           return (
-            "\\OpenActive\\Models\\SchemaOrg\\" +
+            "OpenActive::Models::Schema::" +
             this.convertToCamelCase(typeName)
           );
         } else {
@@ -309,13 +309,20 @@ class Ruby extends Generator {
       enumMap,
       isExtension
     );
+    let propertyTypes = this.createTypesArray(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
-      propertyType: propertyType
+      propertyType: propertyType,
+      propertyTypes: propertyTypes
     };
 
     if (field.obsolete) {

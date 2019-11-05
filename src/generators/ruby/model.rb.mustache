@@ -15,6 +15,11 @@ class {{{className}}} < {{{ inherits }}}
   # @return {{{propertyType}}}
   attr_accessor :{{{snakePropName propName}}}
   property :{{{snakePropName propName}}}, as: "{{propName}}"
+  validate_property :{{{snakePropName propName}}}, types: [
+  {{# propertyTypes }}
+    "{{{ . }}}",
+  {{/propertyTypes }}
+  ]
 {{#unless @last}}
 
 {{/unless}}
