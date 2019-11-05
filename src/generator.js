@@ -276,9 +276,9 @@ class Generator {
 
   storeNamespaces(context) {
     if (Array.isArray(context)) {
-      context.forEach(context => {
-        this.storeNamespaces(this.namespaces, context);
-      });
+      for (let item of context) {
+        this.storeNamespaces(item);
+      }
     } else if (typeof context === "object") {
       Object.assign(this.namespaces, context);
     }
