@@ -10,6 +10,14 @@ namespace OpenActive\Models{{{subNamespaceText}}};
  */
 class {{{className}}} extends {{{ inherits }}}
 {
+    /**
+     * @return string[]|null
+     */
+    static public function getType()
+    {
+        return "{{modelType}}";
+    }
+
 {{#fieldList}}
     /**
 {{#description}}
