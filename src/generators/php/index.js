@@ -114,8 +114,9 @@ class PHP extends Generator {
         return "bool";
       case "Date": // TODO: Find better way of representing Date
       case "DateTime":
-      case "Time":
         return "DateTime";
+      case "Time":
+        return "Time";
       case "Integer":
         return "int";
       case "Float":
