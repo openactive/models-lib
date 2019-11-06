@@ -88,8 +88,18 @@ class PHP extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    let baseType = this.getLangBaseType(
+  internalTypeToLangType(internalType) {
+    if(internalType === "Time") {
+      return "string";
+    }
+    if(internalType === "Time[]") {
+      return "string[]";
+    }
+    return internalType;
+  }
+
+  getInternalType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
+    let baseType = this.getInternalBaseType(
       fullyQualifiedType,
       enumMap,
       modelsMap,
@@ -107,7 +117,7 @@ class PHP extends Generator {
     }
   }
 
-  getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getInternalBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
@@ -277,7 +287,9 @@ class PHP extends Generator {
   }
 
   createTypeString(field, models, enumMap, isExtension) {
-    const types = this.createTypesArray(field, models, enumMap, isExtension);
+    const internalTypes = this.createTypesArray(field, models, enumMap, isExtension);
+
+    const types = internalTypes.map(type => this.internalTypeToLangType(type));
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];
@@ -304,7 +316,7 @@ class PHP extends Generator {
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
+        this.getInternalType(fullyQualifiedType, enumMap, models, isExtension)
       )
       .filter((val, idx, self) => self.indexOf(val) === idx);
 
