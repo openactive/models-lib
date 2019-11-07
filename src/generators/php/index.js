@@ -143,12 +143,9 @@ class PHP extends Generator {
       default:
         if (enumMap[typeName]) {
           if (this.includedInSchema(enumMap[typeName].namespace)) {
-            return "Schema.NET." + this.convertToCamelCase(typeName);
+            return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
           } else {
-            return (
-              "\\OpenActive\\Enums\\" +
-              this.convertToCamelCase(typeName)
-            );
+            return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
           }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
