@@ -142,6 +142,7 @@ class PHP extends Generator {
         return "null";
       default:
         if (enumMap[typeName]) {
+          // TODO: OA and SchemaOrg use same namespace: do we need to differentiate?
           return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
