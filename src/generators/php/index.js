@@ -130,9 +130,8 @@ class PHP extends Generator {
       case "Integer":
         return "int";
       case "Float":
-        return "float";
       case "Number":
-        return "decimal";
+        return "float";
       case "Property":
       case "Text":
       case "URL":
