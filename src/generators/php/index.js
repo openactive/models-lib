@@ -142,14 +142,8 @@ class PHP extends Generator {
         return "null";
       default:
         if (enumMap[typeName]) {
-          if (this.includedInSchema(enumMap[typeName].namespace)) {
-            return "Schema.NET." + this.convertToCamelCase(typeName);
-          } else {
-            return (
-              "\\OpenActive\\Enums\\" +
-              this.convertToCamelCase(typeName)
-            );
-          }
+          // TODO: OA and SchemaOrg use same namespace: do we need to differentiate?
+          return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
         } else if (isExtension) {
