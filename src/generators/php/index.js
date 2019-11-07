@@ -88,8 +88,18 @@ class PHP extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    let baseType = this.getLangBaseType(
+  validationTypeToLangType(validationType) {
+    if(validationType === "Time") {
+      return "string";
+    }
+    if(validationType === "Time[]") {
+      return "string[]";
+    }
+    return validationType;
+  }
+
+  getValidationType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
+    let baseType = this.getValidationBaseType(
       fullyQualifiedType,
       enumMap,
       modelsMap,
@@ -107,15 +117,16 @@ class PHP extends Generator {
     }
   }
 
-  getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getValidationBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
         return "bool";
       case "Date": // TODO: Find better way of representing Date
       case "DateTime":
-      case "Time":
         return "DateTime";
+      case "Time":
+        return "Time";
       case "Integer":
         return "int";
       case "Float":
@@ -226,13 +237,13 @@ class PHP extends Generator {
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createTypeString(
+    let propertyType = this.createLangTypeString(
       field,
       models,
       enumMap,
       isExtension
     );
-    let propertyTypes = this.createTypesArray(
+    let propertyTypes = this.createValidationTypesArray(
       field,
       models,
       enumMap,
@@ -275,14 +286,16 @@ class PHP extends Generator {
     }
   }
 
-  createTypeString(field, models, enumMap, isExtension) {
-    const types = this.createTypesArray(field, models, enumMap, isExtension);
+  createLangTypeString(field, models, enumMap, isExtension) {
+    const validationTypes = this.createValidationTypesArray(field, models, enumMap, isExtension);
+
+    const types = validationTypes.map(type => this.validationTypeToLangType(type));
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
-  createTypesArray(field, models, enumMap, isExtension) {
+  createValidationTypesArray(field, models, enumMap, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
@@ -303,7 +316,7 @@ class PHP extends Generator {
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
+        this.getValidationType(fullyQualifiedType, enumMap, models, isExtension)
       )
       .filter((val, idx, self) => self.indexOf(val) === idx);
 
