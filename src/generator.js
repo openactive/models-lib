@@ -541,10 +541,6 @@ class Generator {
           id = this.getPropNameFromFQP(id);
         }
 
-        // if (/^schema:/.test(node.id)) {
-        //   label = node.id;
-        // }
-
         this.enumMap[id] = {
           label: label,
           namespace: this.namespaces[extensionPrefix],
