@@ -156,29 +156,21 @@ class PHP extends Generator {
       case "null":
         return "null";
       default:
+        let camelName = this.convertToCamelCase(typeName);
         if (enumMap[compactedTypeName]) {
           if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
-            return (
-              "\\OpenActive\\Enums\\SchemaOrg" +
-              this.convertToCamelCase(typeName)
-            );
+            return "\\OpenActive\\Enums\\SchemaOrg\\" + camelName;
           }
-          return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
+          return "\\OpenActive\\Enums\\" + camelName;
         } else if (modelsMap[typeName]) {
           if (this.includedInSchema(modelsMap[typeName].namespace)) {
-            return (
-              "\\OpenActive\\Models\\SchemaOrg" +
-              this.convertToCamelCase(typeName)
-            );
+            return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
           }
-          return "\\OpenActive\\Models\\OA" + this.convertToCamelCase(typeName);
+          return "\\OpenActive\\Models\\OA\\" + camelName;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
-          return (
-            "\\OpenActive\\Models\\SchemaOrg\\" +
-            this.convertToCamelCase(typeName)
-          );
+          return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
         } else {
           throw new Error(
             "Unrecognised type or enum referenced: " +
