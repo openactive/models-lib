@@ -154,7 +154,7 @@ class Ruby extends Generator {
   }
 
   getLangType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
-    let baseType = this.getLangBaseType(
+    let baseType = this.getValidationBaseType(
       fullyQualifiedType,
       enumMap,
       modelsMap,
@@ -172,7 +172,7 @@ class Ruby extends Generator {
     }
   }
 
-  getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getValidationBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
@@ -306,13 +306,13 @@ class Ruby extends Generator {
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createTypeString(
+    let propertyType = this.createLangTypeString(
       field,
       models,
       enumMap,
       isExtension
     );
-    let propertyTypes = this.createTypesArray(
+    let propertyTypes = this.createValidationTypesArray(
       field,
       models,
       enumMap,
@@ -358,14 +358,14 @@ class Ruby extends Generator {
     }
   }
 
-  createTypeString(field, models, enumMap, isExtension) {
-    const types = this.createTypesArray(field, models, enumMap, isExtension);
+  createLangTypeString(field, models, enumMap, isExtension) {
+    const types = this.createValidationTypesArray(field, models, enumMap, isExtension);
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
-  createTypesArray(field, models, enumMap, isExtension) {
+  createValidationTypesArray(field, models, enumMap, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
