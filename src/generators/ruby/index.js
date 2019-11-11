@@ -20,8 +20,8 @@ class Ruby extends Generator {
     return [];
   }
 
-  getNamespaceParts(prop) {
-    return ["OpenActive", "Models", ...this.getBasicNamespace(prop)].map(
+  getNamespaceParts(prop, type) {
+    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(
       name => {
         return this.snakeToCanonicalName(name);
       }
@@ -74,7 +74,7 @@ class Ruby extends Generator {
   }
 
   async renderModel(data) {
-    data["namespace_parts"] = this.getNamespaceParts(data.modelType);
+    data["namespace_parts"] = this.getNamespaceParts(data.modelType, 'Models');
 
     this.modelTemplate =
       this.modelTemplate ||
@@ -86,7 +86,7 @@ class Ruby extends Generator {
   async renderEnum(data) {
     const includedInSchema = this.includedInSchema(data.enumType);
 
-    data["namespace_parts"] = this.getNamespaceParts(data.enumType);
+    data["namespace_parts"] = this.getNamespaceParts(data.enumType, 'Enums');
 
     this.enumTemplate = this.enumTemplate || {
       main: await this.loadTemplate(__dirname + "/enum_main.rb.mustache")
@@ -179,6 +179,7 @@ class Ruby extends Generator {
       case "Boolean":
         return "bool";
       case "Date": // TODO: Find better way of representing Date
+        return "Date";
       case "DateTime":
       case "Time":
         return "DateTime";
@@ -187,25 +188,27 @@ class Ruby extends Generator {
       case "Float":
         return "float";
       case "Number":
-        return "decimal";
+        return "float";
       case "Text":
         return "string";
       case "Duration":
         return "DateInterval";
       case "URL":
       case "Property":
-        return "Uri";
+        return "URI";
       case "null":
         return "null";
       default:
         if (enumMap[compactedTypeName]) {
-          // if (this.includedInSchema(enumMap[typeName].namespace)) {
-          //   return "Schema.NET." + this.convertToCamelCase(typeName);
-          // } else {
-          return this.convertToCamelCase(typeName);
-          // }
+          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
+            return "OpenActive::Enums::Schema" + this.convertToCamelCase(typeName);
+          }
+          return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (modelsMap[typeName]) {
-          return this.convertToCamelCase(typeName);
+          if (this.includedInSchema(modelsMap[typeName].namespace)) {
+            return "OpenActive::Models::Schema" + this.convertToCamelCase(typeName);
+          }
+          return "OpenActive::Models::" + this.convertToCamelCase(typeName);
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
