@@ -11,4 +11,4 @@ An illustration of the general testing approach can be found in the .[NET model 
 2. A constructor is called, using arguments taken from the hand-crafted object, with the intention that the constructor replicates this object exactly.
 3. A variety of tests are then run to ensure that the object created by the constructor and the original JSON object are indeed functionally identical.
 
-The hand-crafted objects to be used are found in the (`data-structure.md`)[https://github.com/openactive/models-lib/blob/master/test-description/data-structure.md] file. In addition, near-identical objects that should fail tests can be found in the (`failing_objects`)[https://github.com/openactive/models-lib/blob/master/failing-objects] directory.
+The hand-crafted objects to be used are found in the [`data-structure.md`](https://github.com/openactive/models-lib/blob/master/test-description/data-structure.md) file. In addition, near-identical objects that should fail tests can be found in the [`failing_objects`](https://github.com/openactive/models-lib/tree/master/test-description/failing_objects) directory.
