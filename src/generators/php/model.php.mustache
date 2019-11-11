@@ -10,6 +10,14 @@ namespace OpenActive\Models{{{subNamespaceText}}};
  */
 class {{{className}}} extends {{{ inherits }}}
 {
+    /**
+     * @return string[]|null
+     */
+    public static function getType()
+    {
+        return "{{modelType}}";
+    }
+
 {{#fieldList}}
     /**
 {{#description}}
@@ -21,6 +29,9 @@ class {{{className}}} extends {{{ inherits }}}
 {{/codeExample }}
      *
      * @var {{{propertyType}}}
+{{#if isObsolete}}
+     * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
      */
     protected ${{{propName}}};
 
@@ -28,6 +39,9 @@ class {{{className}}} extends {{{ inherits }}}
 {{#fieldList}}
     /**
      * @return {{{propertyType}}}
+{{#if isObsolete}}
+     * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
      */
     public function get{{{pascalCasePropName}}}()
     {
@@ -37,7 +51,10 @@ class {{{className}}} extends {{{ inherits }}}
     /**
      * @param {{{propertyType}}} ${{{propName}}}
      * @return void
-     * @throws \Exception If the provided argument is not of a supported type.
+     * @throws \OpenActive\Exceptions\InvalidArgumentException If the provided argument is not of a supported type.
+{{#if isObsolete}}
+     * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
      */
     public function set{{{pascalCasePropName}}}(${{{propName}}})
     {
