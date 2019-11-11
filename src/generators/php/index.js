@@ -89,8 +89,7 @@ class PHP extends Generator {
       val
     ];
 
-    parts = parts
-    .filter(val => !!val);
+    parts = parts.filter(val => !!val);
 
     return "/" + parts.join("/") + ".php";
   }
@@ -104,10 +103,10 @@ class PHP extends Generator {
   }
 
   validationTypeToLangType(validationType) {
-    if(validationType === "Time") {
+    if (validationType === "Time") {
       return "string";
     }
-    if(validationType === "Time[]") {
+    if (validationType === "Time[]") {
       return "string[]";
     }
     return validationType;
@@ -159,13 +158,18 @@ class PHP extends Generator {
       default:
         if (enumMap[compactedTypeName]) {
           if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
-            return "\\OpenActive\\Enums\\SchemaOrg" + this.convertToCamelCase(typeName);
+            return (
+              "\\OpenActive\\Enums\\SchemaOrg" +
+              this.convertToCamelCase(typeName)
+            );
           }
           return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
-
         } else if (modelsMap[typeName]) {
           if (this.includedInSchema(modelsMap[typeName].namespace)) {
-            return "\\OpenActive\\Models\\SchemaOrg" + this.convertToCamelCase(typeName);
+            return (
+              "\\OpenActive\\Models\\SchemaOrg" +
+              this.convertToCamelCase(typeName)
+            );
           }
           return "\\OpenActive\\Models\\OA" + this.convertToCamelCase(typeName);
         } else if (isExtension) {
@@ -176,9 +180,12 @@ class PHP extends Generator {
             this.convertToCamelCase(typeName)
           );
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName +
-            ", " +
-            compactedTypeName);
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
         }
     }
   }
@@ -211,9 +218,11 @@ class PHP extends Generator {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           return false;
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName +
-            ", " +
-            compactedTypeName
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
           );
         }
     }
@@ -285,7 +294,7 @@ class PHP extends Generator {
     if (field.obsolete) {
       return {
         ...obj,
-        isObsolete: true,
+        isObsolete: true
       };
     } else {
       let methodType = "";
@@ -310,9 +319,16 @@ class PHP extends Generator {
   }
 
   createLangTypeString(field, models, enumMap, isExtension) {
-    const validationTypes = this.createValidationTypesArray(field, models, enumMap, isExtension);
+    const validationTypes = this.createValidationTypesArray(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
 
-    const types = validationTypes.map(type => this.validationTypeToLangType(type));
+    const types = validationTypes.map(type =>
+      this.validationTypeToLangType(type)
+    );
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];

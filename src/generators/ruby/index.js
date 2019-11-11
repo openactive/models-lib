@@ -21,11 +21,9 @@ class Ruby extends Generator {
   }
 
   getNamespaceParts(prop, type) {
-    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(
-      name => {
-        return this.snakeToCanonicalName(name);
-      }
-    );
+    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(name => {
+      return this.snakeToCanonicalName(name);
+    });
   }
 
   formatNamespace(parts) {
@@ -74,7 +72,7 @@ class Ruby extends Generator {
   }
 
   async renderModel(data) {
-    data["namespace_parts"] = this.getNamespaceParts(data.modelType, 'Models');
+    data["namespace_parts"] = this.getNamespaceParts(data.modelType, "Models");
 
     this.modelTemplate =
       this.modelTemplate ||
@@ -86,7 +84,7 @@ class Ruby extends Generator {
   async renderEnum(data) {
     const includedInSchema = this.includedInSchema(data.enumType);
 
-    data["namespace_parts"] = this.getNamespaceParts(data.enumType, 'Enums');
+    data["namespace_parts"] = this.getNamespaceParts(data.enumType, "Enums");
 
     this.enumTemplate = this.enumTemplate || {
       main: await this.loadTemplate(__dirname + "/enum_main.rb.mustache")
@@ -144,7 +142,7 @@ class Ruby extends Generator {
 
   convertToClassName(value) {
     // 3DModel is an invalid class name..
-    value = value.replace(/^3/, 'Three');
+    value = value.replace(/^3/, "Three");
 
     return this.convertToCamelCase(value);
   }
@@ -202,20 +200,23 @@ class Ruby extends Generator {
       default:
         if (enumMap[compactedTypeName]) {
           if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
-            return "OpenActive::Enums::Schema" + this.convertToCamelCase(typeName);
+            return (
+              "OpenActive::Enums::Schema" + this.convertToCamelCase(typeName)
+            );
           }
           return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (modelsMap[typeName]) {
           if (this.includedInSchema(modelsMap[typeName].namespace)) {
-            return "OpenActive::Models::Schema" + this.convertToCamelCase(typeName);
+            return (
+              "OpenActive::Models::Schema" + this.convertToCamelCase(typeName)
+            );
           }
           return "OpenActive::Models::" + this.convertToCamelCase(typeName);
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
           return (
-            "OpenActive::Models::Schema::" +
-            this.convertToCamelCase(typeName)
+            "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
           );
         } else {
           throw new Error(
@@ -360,7 +361,12 @@ class Ruby extends Generator {
   }
 
   createLangTypeString(field, models, enumMap, isExtension) {
-    const types = this.createValidationTypesArray(field, models, enumMap, isExtension);
+    const types = this.createValidationTypesArray(
+      field,
+      models,
+      enumMap,
+      isExtension
+    );
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];

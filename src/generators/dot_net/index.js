@@ -104,9 +104,11 @@ class DotNet extends Generator {
           console.log("Extension referenced schema.org property: " + typeName);
           return "Schema.NET." + this.convertToCamelCase(typeName);
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName +
-            ", " +
-            compactedTypeName
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
           );
         }
     }
