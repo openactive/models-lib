@@ -181,8 +181,9 @@ class Ruby extends Generator {
       case "Date": // TODO: Find better way of representing Date
         return "Date";
       case "DateTime":
-      case "Time":
         return "DateTime";
+      case "Time":
+        return "Time";
       case "Integer":
         return "int";
       case "Float":
