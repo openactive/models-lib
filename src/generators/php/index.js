@@ -12,6 +12,14 @@ class PHP extends Generator {
     };
   }
 
+  // using inplace of standard namespace
+  getBasicNamespace(prop) {
+    if (this.includedInSchema(prop)) {
+      return ["SchemaOrg"];
+    }
+    return [];
+  }
+
   async renderModel(data) {
     const includedInSchema = this.includedInSchema(data.modelType);
 
@@ -48,11 +56,11 @@ class PHP extends Generator {
     };
 
     let response = {
-      [this.getEnumFilename(data.typeName)]: this.enumTemplate.main(data)
+      [this.getEnumFilename(data)]: this.enumTemplate.main(data)
     };
 
     for (let value of data.values) {
-      let filename = this.getEnumFilename(data.typeName, value.value);
+      let filename = this.getEnumFilename(data, value.value);
       response[filename] = this.enumTemplate.sub({ ...data, ...value });
     }
 
@@ -73,11 +81,18 @@ class PHP extends Generator {
     return "/Models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
   }
 
-  getEnumFilename(typeName, val) {
-    if (val) {
-      return "/Enums/" + typeName + "/" + val + ".php";
-    }
-    return "/Enums/" + typeName + ".php";
+  getEnumFilename(thisEnum, val) {
+    let parts = [
+      "Enums",
+      ...this.getBasicNamespace(thisEnum.enumType),
+      this.getPropNameFromFQP(thisEnum.enumType),
+      val
+    ];
+
+    parts = parts
+    .filter(val => !!val);
+
+    return "/" + parts.join("/") + ".php";
   }
 
   convertToClassName(value) {
@@ -119,6 +134,7 @@ class PHP extends Generator {
 
   getValidationBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
         return "bool";
@@ -141,11 +157,17 @@ class PHP extends Generator {
       case "null":
         return "null";
       default:
-        if (enumMap[typeName]) {
-          // TODO: OA and SchemaOrg use same namespace: do we need to differentiate?
+        if (enumMap[compactedTypeName]) {
+          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
+            return "\\OpenActive\\Enums\\SchemaOrg" + this.convertToCamelCase(typeName);
+          }
           return "\\OpenActive\\Enums\\" + this.convertToCamelCase(typeName);
+
         } else if (modelsMap[typeName]) {
-          return this.convertToCamelCase(typeName);
+          if (this.includedInSchema(modelsMap[typeName].namespace)) {
+            return "\\OpenActive\\Models\\SchemaOrg" + this.convertToCamelCase(typeName);
+          }
+          return "\\OpenActive\\Models\\OA" + this.convertToCamelCase(typeName);
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
@@ -154,13 +176,16 @@ class PHP extends Generator {
             this.convertToCamelCase(typeName)
           );
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName);
+          throw new Error("Unrecognised type or enum referenced: " + typeName +
+            ", " +
+            compactedTypeName);
         }
     }
   }
 
   isTypeNullable(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
       case "Date":
@@ -178,13 +203,18 @@ class PHP extends Generator {
       default:
         if (enumMap[typeName]) {
           return true;
+        } else if (enumMap[compactedTypeName]) {
+          return true;
         } else if (modelsMap[typeName]) {
           return false;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           return false;
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName);
+          throw new Error("Unrecognised type or enum referenced: " + typeName +
+            ", " +
+            compactedTypeName
+          );
         }
     }
   }
