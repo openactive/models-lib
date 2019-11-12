@@ -326,14 +326,26 @@ class Generator {
 
     let doc = this.createEnumDoc(typeName, thisEnum);
 
+    let values = [];
+    // enums imported in from extensions have fqValues,
+    //   whereas first party data-models only have values
+    if (thisEnum.fqValues) {
+      values = thisEnum.fqValues.map(value => ({
+        memberVal: this.expandPrefix(value),
+        value: this.getPropNameFromFQP(value)
+      }));
+    } else {
+      values = thisEnum.values.map(value => ({
+        memberVal: thisEnum.namespace + value,
+        value: value
+      }));
+    }
+
     let data = {
       enumType: typeName,
       typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
       enumDoc: doc,
-      values: thisEnum.values.map(value => ({
-        memberVal: thisEnum.namespace + value,
-        value: value
-      }))
+      values: values
     };
 
     return data;
@@ -548,6 +560,7 @@ class Generator {
           values: extModelGraph
             .filter(n => n.type == node.id)
             .map(n => n.label),
+          fqValues: extModelGraph.filter(n => n.type == node.id).map(n => n.id),
           extensionPrefix: extensionPrefix
         };
       }
