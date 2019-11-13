@@ -97,7 +97,7 @@ class PHP extends Generator {
   convertToClassName(value) {
     // 3DModel is an invalid class name..
     value = value.replace(/^3/, "Three");
-    
+
     return this.convertToCamelCase(value);
   }
 

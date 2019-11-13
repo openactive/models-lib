@@ -55,11 +55,10 @@ program
 
       await generator.initialize();
 
-      await generator[action].apply(generator)
+      await generator[action].apply(generator);
     };
 
-    run()
-      .catch(e => console.error(e));
+    run().catch(e => console.error(e));
   });
 
 program.command("schema_models").action(() => {});

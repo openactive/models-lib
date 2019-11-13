@@ -22,7 +22,7 @@ class Generator {
   // memoize the promise by overwriting the function with resulting promise
   initialize() {
     let prom = this._initialize();
-    return this.initialize = () => Promise.resolve(prom)
+    return (this.initialize = () => Promise.resolve(prom));
   }
 
   async _initialize() {
@@ -39,15 +39,15 @@ class Generator {
     }
   }
 
-  async setupHandlebars() {
-
-  }
+  async setupHandlebars() {}
 
   mutateExtensions(extensions) {
     return extensions;
   }
 
   async dumpStructures() {
+    await this.initialize();
+
     await fs.writeFile("models.json", JSON.stringify(this.models, null, 2));
     await fs.writeFile("enums.json", JSON.stringify(this.enumMap, null, 2));
   }
@@ -67,12 +67,12 @@ class Generator {
       data[keyName] = pageContent;
     }
 
-
     for (let typeName of Object.keys(this.enumMap)) {
       let thisEnum = this.enumMap[typeName];
 
       // filter off schema enums for langs that don't need it
-      if (!this.extensions['schema'] && this.includedInSchema(typeName)) continue;
+      if (!this.extensions["schema"] && this.includedInSchema(typeName))
+        continue;
 
       let pageContent = await this.createEnumData(typeName, thisEnum);
       let keyName = this.getEnumFilename(typeName);
@@ -114,7 +114,8 @@ class Generator {
       let thisEnum = this.enumMap[typeName];
 
       // filter off schema enums for langs that don't need it
-      if (!this.extensions['schema'] && this.includedInSchema(typeName)) continue;
+      if (!this.extensions["schema"] && this.includedInSchema(typeName))
+        continue;
 
       let pageContent = await this.createEnumFile(typeName, thisEnum);
       if (!isobject(pageContent)) {
@@ -135,7 +136,9 @@ class Generator {
   }
 
   get sortedModels() {
-    let models = Object.keys(this.models).filter(name => !!name && name !== 'undefined');
+    let models = Object.keys(this.models).filter(
+      name => !!name && name !== "undefined"
+    );
     return models.sort((a, b) => {
       let aChain = this.createModelChain(a);
       let bChain = this.createModelChain(b);
@@ -221,9 +224,10 @@ class Generator {
           // filter off classes that we don't have (i.e. rdfs:Class)
           parentNames = parentNames.filter(parent => {
             let compacted = this.getCompacted(parent);
-            let model = this.models[compacted];
 
-            return !!model;
+            let context = this.getNamespace(compacted)[0];
+
+            return !["rdf", "rdfs"].includes(context);
           });
         }
       } else if (this.enumMap[modelName]) {
@@ -488,7 +492,7 @@ class Generator {
   }
 
   augmentWithExtension(extension) {
-    let {graph: extModelGraph, prefix: extensionPrefix} = extension;
+    let { graph: extModelGraph, prefix: extensionPrefix } = extension;
 
     // Add classes first
     extModelGraph.forEach(node => {
@@ -560,10 +564,10 @@ class Generator {
         node.domainIncludes.forEach(prop => {
           let model;
           if (extension.preferOA) {
-            model = this.models[this.getPropNameFromFQP(prop)] || this.models[prop]
-          }
-          else {
-            model = this.models[prop]
+            model =
+              this.models[this.getPropNameFromFQP(prop)] || this.models[prop];
+          } else {
+            model = this.models[prop];
           }
 
           if (model) {
@@ -571,6 +575,10 @@ class Generator {
             model.fields = model.fields || {};
             model.extensionFields.push(field.fieldName);
             model.fields[field.fieldName] = field;
+          } else {
+            console.error(
+              `*** couldn't attach property "${field.fieldName}" onto "${prop}"`
+            );
           }
         });
       }
@@ -739,7 +747,7 @@ class Generator {
   }
 
   obsoleteNotInSpecFields(model) {
-    let augFields = {...model.fields}
+    let augFields = { ...model.fields };
 
     let parentModel = this.getParentModel(model);
     if (model.notInSpec && model.notInSpec.length > 0)
@@ -750,7 +758,7 @@ class Generator {
             field.toLowerCase()
           ) {
             // Cannot have property with same name as type, so do not disinherit here
-            augFields[field] = {...parentModel.fields[field]};
+            augFields[field] = { ...parentModel.fields[field] };
             augFields[field].obsolete = true;
           }
         } else {
