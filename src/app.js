@@ -55,10 +55,6 @@ program
 
       await generator.initialize();
 
-      console.log(generator);
-      console.log(action);
-      console.log(generator[action]);
-
       await generator[action].apply(generator)
     };
 

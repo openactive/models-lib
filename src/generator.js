@@ -287,6 +287,7 @@ class Generator {
       if (!extension) throw "Error loading extension: " + prefix;
 
       extensions[prefix].spec = extension;
+      extensions[prefix].prefix = prefix;
     }
 
     // Add all extensions and namespaces first, in case they reference each other
@@ -316,7 +317,7 @@ class Generator {
     for (let prefix of Object.keys(extensions)) {
       let extension = extensions[prefix];
       if (extension.graph) {
-        await this.augmentWithExtension(extension.graph, extension.url, prefix);
+        await this.augmentWithExtension(extension);
         this.augmentEnumsWithExtension(extension.graph, extension.url, prefix);
       }
     }
@@ -486,7 +487,9 @@ class Generator {
       );
   }
 
-  augmentWithExtension(extModelGraph, extensionUrl, extensionPrefix) {
+  augmentWithExtension(extension) {
+    let {graph: extModelGraph, prefix: extensionPrefix} = extension;
+
     // Add classes first
     extModelGraph.forEach(node => {
       if (!node.subClassOf) {
@@ -555,7 +558,14 @@ class Generator {
           extensionPrefix: extensionPrefix
         };
         node.domainIncludes.forEach(prop => {
-          let model = this.models[prop];
+          let model;
+          if (extension.preferOA) {
+            model = this.models[this.getPropNameFromFQP(prop)] || this.models[prop]
+          }
+          else {
+            model = this.models[prop]
+          }
+
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
