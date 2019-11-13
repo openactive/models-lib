@@ -26,11 +26,13 @@ namespace OpenActive.NET
         /// {{{ . }}}
         /// </summary>
     {{/description }}
+    {{#if codeExample }}
         /// <example>
-    {{# codeExample }}
+        {{#each codeExample }}
         /// {{{ . }}}
-    {{/codeExample }}
+        {{/ each }}
         /// </example>
+    {{/if }}
     {{# decorators }}
         {{{ . }}}
     {{/decorators }}
