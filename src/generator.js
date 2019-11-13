@@ -374,9 +374,7 @@ class Generator {
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
     let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
-    console.log("base class", model.type, hasBaseClass);
 
-    hasBaseClass = true;
     let doc = this.createModelDoc(model);
 
     let data = {
@@ -1080,7 +1078,7 @@ class Generator {
       return true;
     }
 
-    return !this.includedInSchema(derivedFrom);
+    return this.includedInSchema(derivedFrom);
   }
 }
 
