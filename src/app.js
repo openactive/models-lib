@@ -19,6 +19,7 @@ program
   .command("generate <language>")
   .option("--no-beta", "Disable the beta extension")
   .option("-d, --destination <destination>", "Output directory")
+  .option("--method <methodName>")
   .action((language, options) => {
     if (!options.destination) {
       console.error("Destination must be specified");
@@ -36,8 +37,6 @@ program
       return;
     }
 
-    let generator = new Generator();
-
     let extensions = {
       ...require("./extensions/_extensions")
     };
@@ -49,8 +48,21 @@ program
       };
     }
 
-    generator
-      .generateModelClassFiles(options.destination, extensions)
+    let action = options.method || "generateModelClassFiles";
+
+    let run = async () => {
+      let generator = new Generator(options.destination, extensions);
+
+      await generator.initialize();
+
+      console.log(generator);
+      console.log(action);
+      console.log(generator[action]);
+
+      await generator[action].apply(generator)
+    };
+
+    run()
       .catch(e => console.error(e));
   });
 

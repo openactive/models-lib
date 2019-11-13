@@ -8,59 +8,113 @@ import * as jsonld from "jsonld";
 import Handlebars from "handlebars";
 
 class Generator {
-  async generateModelClassFiles(dataModelDirectory, extensions) {
+  constructor(dataModelDirectory, extensions) {
     // Returns the latest version of the models map
-    this.models = getModels();
     this.dataModelDirectory = dataModelDirectory;
+    this.extensions = extensions;
+
+    this.models = getModels();
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
     this.generatedFiles = [];
+  }
 
+  // memoize the promise by overwriting the function with resulting promise
+  initialize() {
+    let prom = this._initialize();
+    return this.initialize = () => Promise.resolve(prom)
+  }
+
+  async _initialize() {
     this.reindexEnums();
 
-    if (this.mutateExtensions && typeof this.mutateExtensions === "function") {
-      extensions = this.mutateExtensions(extensions);
-    }
+    this.extensions = this.mutateExtensions(this.extensions);
 
-    await this.loadExtensions(extensions);
+    await this.loadExtensions(this.extensions);
 
     for (let modelName of Object.keys(this.models)) {
       let model = this.models[modelName];
 
       model.tree = this.createModelTree(modelName);
     }
+  }
 
+  async setupHandlebars() {
+
+  }
+
+  mutateExtensions(extensions) {
+    return extensions;
+  }
+
+  async dumpStructures() {
     await fs.writeFile("models.json", JSON.stringify(this.models, null, 2));
     await fs.writeFile("enums.json", JSON.stringify(this.enumMap, null, 2));
+  }
 
-    this.getDirs().forEach(dir => {
-      fsExtra.emptyDirSync(dataModelDirectory + "/" + dir);
-    });
+  async dumpTemplateData() {
+    await this.initialize();
 
-    if (this.setupHandlebars && typeof this.setupHandlebars === "function") {
-      await this.setupHandlebars();
-    }
+    let data = {};
 
     for (let typeName of this.sortedModels) {
       let model = this.models[typeName];
-      if (typeName != "undefined") {
-        //ignores "model_list.json" (which appears to be ignored everywhere else)
+      //ignores "model_list.json" (which appears to be ignored everywhere else)
 
-        let pageContent = await this.createModelFile(model, extensions);
-        if (!isobject(pageContent)) {
-          let pageName = this.getModelFilename(model);
+      let pageContent = await this.createModelData(model, this.extensions);
+      let keyName = this.getModelFilename(model);
 
-          pageContent = {
-            [pageName]: pageContent
-          };
-        }
-        await this.savePage(pageContent);
+      data[keyName] = pageContent;
+    }
+
+
+    for (let typeName of Object.keys(this.enumMap)) {
+      let thisEnum = this.enumMap[typeName];
+
+      // filter off schema enums for langs that don't need it
+      if (!this.extensions['schema'] && this.includedInSchema(typeName)) continue;
+
+      let pageContent = await this.createEnumData(typeName, thisEnum);
+      let keyName = this.getEnumFilename(typeName);
+
+      data[keyName] = pageContent;
+    }
+
+    await fs.writeFile("template_data.json", JSON.stringify(data, null, 2));
+  }
+
+  async cleanModelDirs() {
+    this.getDirs().forEach(dir => {
+      fsExtra.emptyDirSync(this.dataModelDirectory + "/" + dir);
+    });
+  }
+
+  async generateModelClassFiles() {
+    await this.initialize();
+    await this.cleanModelDirs();
+    await this.setupHandlebars();
+
+    for (let typeName of this.sortedModels) {
+      let model = this.models[typeName];
+      //ignores "model_list.json" (which appears to be ignored everywhere else)
+
+      let pageContent = await this.createModelFile(model, this.extensions);
+      if (!isobject(pageContent)) {
+        let pageName = this.getModelFilename(model);
+
+        pageContent = {
+          [pageName]: pageContent
+        };
       }
+      await this.savePage(pageContent);
     }
     // Converts the enum map into an array for ease of use
     // filter(typeName => !this.includedInSchema(enumMap[typeName].namespace)).
     for (let typeName of Object.keys(this.enumMap)) {
       let thisEnum = this.enumMap[typeName];
+
+      // filter off schema enums for langs that don't need it
+      if (!this.extensions['schema'] && this.includedInSchema(typeName)) continue;
 
       let pageContent = await this.createEnumFile(typeName, thisEnum);
       if (!isobject(pageContent)) {
@@ -81,7 +135,7 @@ class Generator {
   }
 
   get sortedModels() {
-    let models = Object.keys(this.models);
+    let models = Object.keys(this.models).filter(name => !!name && name !== 'undefined');
     return models.sort((a, b) => {
       let aChain = this.createModelChain(a);
       let bChain = this.createModelChain(b);
@@ -117,10 +171,6 @@ class Generator {
     if (parentName) {
       if (parentName[0] === "#") {
         parentName = parentName.substr(1);
-
-        // if (this.includedInSchema(modelName)) {
-        //   parentName = 'schema:'+parentName;
-        // }
       }
       let parent = this.createModelChain(parentName);
       if (parent) {
@@ -309,7 +359,8 @@ class Generator {
       className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
       inherits: inherits,
       modelType: model.type,
-      fieldList: this.createTableFromFieldList(fullFieldsList, hasBaseClass)
+      fieldList: this.createTableFromFieldList(fullFieldsList, hasBaseClass),
+      fullFields: fullFields
     };
 
     return data;
@@ -678,7 +729,7 @@ class Generator {
   }
 
   obsoleteNotInSpecFields(model) {
-    let augFields = Object.assign({}, model.fields);
+    let augFields = {...model.fields}
 
     let parentModel = this.getParentModel(model);
     if (model.notInSpec && model.notInSpec.length > 0)
@@ -689,7 +740,7 @@ class Generator {
             field.toLowerCase()
           ) {
             // Cannot have property with same name as type, so do not disinherit here
-            augFields[field] = Object.assign({}, parentModel.fields[field]);
+            augFields[field] = {...parentModel.fields[field]};
             augFields[field].obsolete = true;
           }
         } else {
