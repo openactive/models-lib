@@ -2,7 +2,7 @@ import { getEnums, getMetaData, getModels } from "@openactive/data-models";
 import { constants as fsConstants, promises as fs } from "fs";
 import fsExtra from "fs-extra";
 import path from "path";
-import request from "sync-request";
+import request from "then-request";
 import isobject from "isobject";
 import * as jsonld from "jsonld";
 import Handlebars from "handlebars";
@@ -87,6 +87,8 @@ class Generator {
     this.getDirs().forEach(dir => {
       fsExtra.emptyDirSync(this.dataModelDirectory + "/" + dir);
     });
+
+    await this.dumpStructures();
   }
 
   async generateModelClassFiles() {
@@ -227,7 +229,7 @@ class Generator {
 
             let context = this.getNamespace(compacted)[0];
 
-            return !["rdf", "rdfs"].includes(context);
+            return !["rdf", "rdfs", "skos"].includes(context);
           });
         }
       } else if (this.enumMap[modelName]) {
@@ -282,17 +284,26 @@ class Generator {
   async loadExtensions(extensions) {
     let extensionData = {};
 
+    let promises = [];
     for (let prefix of Object.keys(extensions)) {
+      extensions[prefix].prefix = prefix;
       if (extensions[prefix].spec) {
         continue;
       }
 
-      let extension = await this.getExtension(extensions[prefix].url);
-      if (!extension) throw "Error loading extension: " + prefix;
+      let promise = this.getExtension(extensions[prefix].url).then(
+        extension => {
+          if (!extension) throw "Error loading extension: " + prefix;
 
-      extensions[prefix].spec = extension;
-      extensions[prefix].prefix = prefix;
+          console.log("loaded ", prefix);
+
+          extensions[prefix].spec = extension;
+        }
+      );
+
+      promises.push(promise);
     }
+    await Promise.all(promises);
 
     // Add all extensions and namespaces first, in case they reference each other
     for (let prefix of Object.keys(extensions)) {
@@ -310,6 +321,13 @@ class Generator {
 
       if (!extension || !extension["@graph"]) {
         continue;
+      }
+
+      if (prefix == "beta") {
+        Object.assign(extension["@context"][1], {
+          isArray: "https://openactive.com/ns-noncompliant#isArray",
+          githubIssue: "https://openactive.com/ns-noncompliant#githubIssue"
+        });
       }
 
       let expanded = await jsonld.compact(extension, extension["@context"]);
@@ -356,7 +374,9 @@ class Generator {
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
     let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
+    console.log("base class", model.type, hasBaseClass);
 
+    hasBaseClass = true;
     let doc = this.createModelDoc(model);
 
     let data = {
@@ -440,25 +460,26 @@ class Generator {
   }
 
   createDescription(field) {
+    let lines = [];
     if (field.requiredContent) {
-      return (
+      lines.push(
         "Must always be present and set to " +
-        this.renderCode(
-          field.requiredContent,
-          field.fieldName,
-          field.requiredType
-        )
+          this.renderCode(
+            field.requiredContent,
+            field.fieldName,
+            field.requiredType
+          )
       );
     } else {
-      let lines = [
+      lines = [
         field.extensionPrefix == "beta" &&
           "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
         ...field.description
       ];
-      lines.concat(field.description);
 
-      return this.cleanDocLines(lines);
+      lines.concat(field.description);
     }
+    return this.cleanDocLines(lines);
   }
 
   createCodeExample(field) {
@@ -503,12 +524,6 @@ class Generator {
       }
 
       if (node.type === "Class" && node.subClassOf[0] != "schema:Enumeration") {
-        // Only include subclasses for either OA or schema.org classes
-        // let subClasses = node.subClassOf.filter(
-        //   prop =>
-        //     models[this.getPropNameFromFQP(prop)] || this.includedInSchema(prop),
-        // );
-
         let subClasses = node.subClassOf;
 
         let model = {
@@ -561,6 +576,7 @@ class Generator {
           example: node.example,
           extensionPrefix: extensionPrefix
         };
+
         node.domainIncludes.forEach(prop => {
           let model;
           if (extension.preferOA) {
@@ -640,13 +656,19 @@ class Generator {
     // first of all normalize down the parents
     for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
+      let extension = this.extensions[model.extension];
 
       if (!model.rawSubClasses) continue;
 
       let subclasses = model.rawSubClasses.map(subclass => {
         let compacted = this.getCompacted(subclass);
+        let propName = this.getPropNameFromFQP(subclass);
+
+        if (extension.preferOA && this.models[propName]) {
+          return "#" + propName;
+        }
+
         if (this.models[compacted]) {
-          // return "#" + this.getPropNameFromFQP(subclass)
           return subclass;
         }
         return this.expandPrefix(subclass, false);
@@ -699,8 +721,8 @@ class Generator {
     return "[#" + issueNumber + "](" + url + ")";
   }
 
-  getExtension(extensionUrl) {
-    let response = request("GET", extensionUrl, {
+  async getExtension(extensionUrl) {
+    let response = await request("GET", extensionUrl, {
       accept: "application/ld+json"
     });
     if (response && response.statusCode == 200) {
@@ -716,8 +738,15 @@ class Generator {
   }
 
   getParentModel(model) {
-    if (model.subClassOf && model.subClassOf.indexOf("#") == 0) {
-      return this.models[model.subClassOf.substring(1)];
+    let subClassOf = model.subClassOf;
+    if (!subClassOf) return;
+
+    if (subClassOf.indexOf("#") == 0) {
+      subClassOf = subClassOf.substr(1);
+    }
+
+    if (this.models[subClassOf]) {
+      return this.models[subClassOf];
     } else {
       return false;
     }
