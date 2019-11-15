@@ -136,7 +136,7 @@ class Generator {
   }
 
   get sortedNamespaces() {
-    return Object.keys(this.namespaces).sort((a,b) => {
+    return Object.keys(this.namespaces).sort((a, b) => {
       let valA = this.namespaces[a];
       let valB = this.namespaces[b];
 
