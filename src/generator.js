@@ -595,9 +595,18 @@ class Generator {
             model.extensionFields.push(field.fieldName);
             model.fields[field.fieldName] = field;
           } else {
-            console.error(
-              `*** couldn't attach property "${field.fieldName}" onto "${prop}"`
-            );
+            let isSchema = /^schema:/.test(prop);
+            let msg =
+              `*** couldn't attach property "${field.fieldName}" onto "${prop}".` +
+              (isSchema
+                ? ` This is normal for Schema.org. See https://schema.org/docs/extension.html for details.`
+                : "");
+
+            if (isSchema) {
+              console.info(msg);
+            } else {
+              console.error(msg);
+            }
           }
         });
       }
