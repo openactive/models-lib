@@ -151,11 +151,11 @@ class Ruby extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, isExtension, model) {
+  getLangType(fullyQualifiedType, isExtension, field) {
     let baseType = this.getValidationBaseType(
       fullyQualifiedType,
       isExtension,
-      model
+      field
     );
     if (this.isArray(fullyQualifiedType)) {
       // Remove "|null" from end of type if it's an array
@@ -198,6 +198,11 @@ class Ruby extends Generator {
         return "null";
       default:
         if (this.enumMap[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.enumMap[typeName]) {
+            compactedTypeName = typeName;
+          }
+
           if (this.includedInSchema(compactedTypeName)) {
             return (
               "OpenActive::Enums::Schema::" + this.convertToCamelCase(typeName)
@@ -205,6 +210,11 @@ class Ruby extends Generator {
           }
           return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (this.models[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.models[typeName]) {
+            compactedTypeName = typeName;
+          }
+
           if (this.includedInSchema(compactedTypeName)) {
             return (
               "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
@@ -213,7 +223,10 @@ class Ruby extends Generator {
           return "OpenActive::Models::" + this.convertToCamelCase(typeName);
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
-          console.log("Extension referenced schema.org property: " + typeName);
+          console.log(
+            "Extension referenced schema.org property: " + typeName,
+            prefixedTypeName
+          );
           return (
             "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
           );
@@ -305,17 +318,11 @@ class Ruby extends Generator {
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createLangTypeString(
-      field,
-      models,
-      enumMap,
-      isExtension
-    );
+    let propertyType = this.createLangTypeString(field, isExtension);
     let propertyTypes = this.createValidationTypesArray(
       field,
-      models,
-      enumMap,
-      isExtension
+      isExtension,
+      model
     );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
@@ -358,13 +365,8 @@ class Ruby extends Generator {
     }
   }
 
-  createLangTypeString(field, models, enumMap, isExtension) {
-    const types = this.createValidationTypesArray(
-      field,
-      models,
-      enumMap,
-      isExtension
-    );
+  createLangTypeString(field, isExtension) {
+    const types = this.createValidationTypesArray(field, isExtension);
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];
@@ -389,7 +391,7 @@ class Ruby extends Generator {
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, isExtension, field.extensionPrefix)
+        this.getLangType(fullyQualifiedType, isExtension, field)
       )
       .filter((val, idx, self) => self.indexOf(val) === idx);
 

@@ -115,12 +115,11 @@ class PHP extends Generator {
     return validationType;
   }
 
-  getValidationType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
+  getValidationType(fullyQualifiedType, isExtension, field) {
     let baseType = this.getValidationBaseType(
       fullyQualifiedType,
-      enumMap,
-      modelsMap,
-      isExtension
+      isExtension,
+      field
     );
     if (this.isArray(fullyQualifiedType)) {
       // Remove "|null" from end of type if it's an array
@@ -134,7 +133,7 @@ class PHP extends Generator {
     }
   }
 
-  getValidationBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getValidationBaseType(prefixedTypeName, isExtension, model) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
@@ -160,19 +159,31 @@ class PHP extends Generator {
         return "null";
       default:
         let camelName = this.convertToCamelCase(typeName);
-        if (enumMap[compactedTypeName]) {
+        if (this.enumMap[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.enumMap[typeName]) {
+            compactedTypeName = typeName;
+          }
           if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Enums\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Enums\\" + camelName;
-        } else if (modelsMap[compactedTypeName]) {
+        } else if (this.models[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.models[typeName]) {
+            compactedTypeName = typeName;
+          }
           if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Models\\OA\\" + camelName;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
-          console.log("Extension referenced schema.org property: " + typeName, prefixedTypeName, compactedTypeName);
+          console.log(
+            "Extension referenced schema.org property: " + typeName,
+            prefixedTypeName,
+            compactedTypeName
+          );
           return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
         } else {
           throw new Error(
@@ -185,7 +196,7 @@ class PHP extends Generator {
     }
   }
 
-  isTypeNullable(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  isTypeNullable(prefixedTypeName, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
@@ -203,11 +214,11 @@ class PHP extends Generator {
       case "URL":
         return false;
       default:
-        if (enumMap[typeName]) {
+        if (this.enumMap[typeName]) {
           return true;
-        } else if (enumMap[compactedTypeName]) {
+        } else if (this.enumMap[compactedTypeName]) {
           return true;
-        } else if (modelsMap[typeName]) {
+        } else if (this.models[typeName]) {
           return false;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
@@ -262,18 +273,8 @@ class PHP extends Generator {
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createLangTypeString(
-      field,
-      models,
-      enumMap,
-      isExtension
-    );
-    let propertyTypes = this.createValidationTypesArray(
-      field,
-      models,
-      enumMap,
-      isExtension
-    );
+    let propertyType = this.createLangTypeString(field, isExtension);
+    let propertyTypes = this.createValidationTypesArray(field, isExtension);
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
@@ -312,13 +313,8 @@ class PHP extends Generator {
     }
   }
 
-  createLangTypeString(field, models, enumMap, isExtension) {
-    const validationTypes = this.createValidationTypesArray(
-      field,
-      models,
-      enumMap,
-      isExtension
-    );
+  createLangTypeString(field, isExtension) {
+    const validationTypes = this.createValidationTypesArray(field, isExtension);
 
     const types = validationTypes.map(type =>
       this.validationTypeToLangType(type)
@@ -328,7 +324,7 @@ class PHP extends Generator {
     return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
-  createValidationTypesArray(field, models, enumMap, isExtension) {
+  createValidationTypesArray(field, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
@@ -338,9 +334,7 @@ class PHP extends Generator {
 
     // Add nullable types
     types.forEach(fullyQualifiedType => {
-      if (
-        this.isTypeNullable(fullyQualifiedType, enumMap, models, isExtension)
-      ) {
+      if (this.isTypeNullable(fullyQualifiedType, isExtension)) {
         types.push("null");
       }
     });
@@ -349,7 +343,7 @@ class PHP extends Generator {
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getValidationType(fullyQualifiedType, enumMap, models, isExtension)
+        this.getValidationType(fullyQualifiedType, isExtension, field)
       )
       .filter((val, idx, self) => self.indexOf(val) === idx);
 
