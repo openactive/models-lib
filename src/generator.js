@@ -135,6 +135,18 @@ class Generator {
     }
   }
 
+  get sortedNamespaces() {
+    return Object.keys(this.namespaces).sort((a,b) => {
+      let valA = this.namespaces[a];
+      let valB = this.namespaces[b];
+
+      if (isobject(valA)) return 1;
+      if (isobject(valB)) return -1;
+
+      return valB.length - valA.length;
+    });
+  }
+
   get sortedModels() {
     let models = Object.keys(this.models).filter(
       name => !!name && name !== "undefined"
@@ -1035,7 +1047,7 @@ class Generator {
 
     url = url.replace(/^http:/i, "https:");
 
-    for (let key of Object.keys(this.namespaces)) {
+    for (let key of this.sortedNamespaces) {
       let val = this.namespaces[key];
       if (isobject(val)) continue;
 
