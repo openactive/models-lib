@@ -42,10 +42,10 @@ class PHP extends Generator {
   }
 
   async renderEnum(data) {
-    const includedInSchema = this.includedInSchema(data.modelType);
+    const includedInSchema = this.includedInSchema(data.enumType);
 
     if (!includedInSchema) {
-      data["subNamespaceText"] = "\\OA";
+      data["subNamespaceText"] = "";
     } else {
       data["subNamespaceText"] = "\\SchemaOrg";
     }
