@@ -161,18 +161,18 @@ class PHP extends Generator {
       default:
         let camelName = this.convertToCamelCase(typeName);
         if (enumMap[compactedTypeName]) {
-          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
+          if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Enums\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Enums\\" + camelName;
         } else if (modelsMap[compactedTypeName]) {
-          if (this.includedInSchema(modelsMap[compactedTypeName].namespace)) {
+          if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Models\\OA\\" + camelName;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
-          console.log("Extension referenced schema.org property: " + typeName);
+          console.log("Extension referenced schema.org property: " + typeName, prefixedTypeName, compactedTypeName);
           return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
         } else {
           throw new Error(
