@@ -149,9 +149,7 @@ class DotNet extends Generator {
   }
 
   createPropertyFromField(field, models, enumMap, hasBaseClass) {
-    let memberName = field.extensionPrefix
-      ? `${field.extensionPrefix}:${field.fieldName}`
-      : field.fieldName;
+    let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);

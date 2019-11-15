@@ -151,12 +151,11 @@ class Ruby extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, enumMap, modelsMap, isExtension) {
+  getLangType(fullyQualifiedType, isExtension, model) {
     let baseType = this.getValidationBaseType(
       fullyQualifiedType,
-      enumMap,
-      modelsMap,
-      isExtension
+      isExtension,
+      model
     );
     if (this.isArray(fullyQualifiedType)) {
       // Remove "|null" from end of type if it's an array
@@ -170,7 +169,7 @@ class Ruby extends Generator {
     }
   }
 
-  getValidationBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  getValidationBaseType(prefixedTypeName, isExtension, model) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
@@ -198,17 +197,17 @@ class Ruby extends Generator {
       case "null":
         return "null";
       default:
-        if (enumMap[compactedTypeName]) {
-          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
+        if (this.enumMap[compactedTypeName]) {
+          if (this.includedInSchema(compactedTypeName)) {
             return (
-              "OpenActive::Enums::Schema" + this.convertToCamelCase(typeName)
+              "OpenActive::Enums::Schema::" + this.convertToCamelCase(typeName)
             );
           }
           return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
-        } else if (modelsMap[typeName]) {
-          if (this.includedInSchema(modelsMap[typeName].namespace)) {
+        } else if (this.models[compactedTypeName]) {
+          if (this.includedInSchema(compactedTypeName)) {
             return (
-              "OpenActive::Models::Schema" + this.convertToCamelCase(typeName)
+              "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
             );
           }
           return "OpenActive::Models::" + this.convertToCamelCase(typeName);
@@ -229,7 +228,7 @@ class Ruby extends Generator {
     }
   }
 
-  isTypeNullable(prefixedTypeName, enumMap, modelsMap, isExtension) {
+  isTypeNullable(prefixedTypeName, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
@@ -247,11 +246,11 @@ class Ruby extends Generator {
       case "URL":
         return false;
       default:
-        if (enumMap[typeName]) {
+        if (this.enumMap[typeName]) {
           return true;
-        } else if (enumMap[compactedTypeName]) {
+        } else if (this.enumMap[compactedTypeName]) {
           return true;
-        } else if (modelsMap[typeName]) {
+        } else if (this.models[typeName]) {
           return false;
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
@@ -301,10 +300,8 @@ class Ruby extends Generator {
     }
   }
 
-  createPropertyFromField(field, models, enumMap, hasBaseClass) {
-    let memberName = field.extensionPrefix
-      ? `${field.extensionPrefix}:${field.fieldName}`
-      : field.fieldName;
+  createPropertyFromField(field, models, enumMap, hasBaseClass, model) {
+    let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
@@ -323,6 +320,7 @@ class Ruby extends Generator {
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
+      memberName: memberName,
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
@@ -372,7 +370,7 @@ class Ruby extends Generator {
     return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
-  createValidationTypesArray(field, models, enumMap, isExtension) {
+  createValidationTypesArray(field, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
@@ -382,18 +380,16 @@ class Ruby extends Generator {
 
     // Add nullable types
     types.forEach(fullyQualifiedType => {
-      if (
-        this.isTypeNullable(fullyQualifiedType, enumMap, models, isExtension)
-      ) {
+      if (this.isTypeNullable(fullyQualifiedType, isExtension)) {
         types.push("null");
       }
     });
 
-    // We get the PHP types from given schema/OA ones,
+    // We get the types from given schema/OA ones,
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
+        this.getLangType(fullyQualifiedType, isExtension, field.extensionPrefix)
       )
       .filter((val, idx, self) => self.indexOf(val) === idx);
 

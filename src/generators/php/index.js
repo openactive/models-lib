@@ -258,9 +258,7 @@ class PHP extends Generator {
   }
 
   createPropertyFromField(field, models, enumMap, hasBaseClass) {
-    let memberName = field.extensionPrefix
-      ? `${field.extensionPrefix}:${field.fieldName}`
-      : field.fieldName;
+    let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
@@ -279,6 +277,7 @@ class PHP extends Generator {
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
+      memberName: memberName,
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),

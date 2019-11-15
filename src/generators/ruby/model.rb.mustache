@@ -14,7 +14,7 @@ class {{{className}}} < {{{ inherits }}}
 {{#fieldList}}
   # @return {{{propertyType}}}
   attr_accessor :{{{snakePropName propName}}}
-  property :{{{snakePropName propName}}}, as: "{{propName}}"
+  property :{{{snakePropName propName}}}, as: "{{memberName}}"
   validate_property :{{{snakePropName propName}}}, types: [
   {{# propertyTypes }}
     "{{{ . }}}",

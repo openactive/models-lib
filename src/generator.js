@@ -98,8 +98,6 @@ class Generator {
 
     for (let typeName of this.sortedModels) {
       let model = this.models[typeName];
-      //ignores "model_list.json" (which appears to be ignored everywhere else)
-
       let pageContent = await this.createModelFile(model, this.extensions);
       if (!isobject(pageContent)) {
         let pageName = this.getModelFilename(model);
@@ -174,9 +172,6 @@ class Generator {
     let parentName = this.getCompacted(model.subClassOf || model.derivedFrom);
 
     if (parentName) {
-      if (parentName[0] === "#") {
-        parentName = parentName.substr(1);
-      }
       let parent = this.createModelChain(parentName);
       if (parent) {
         return [...parent, modelName];
@@ -382,7 +377,11 @@ class Generator {
       className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
       inherits: inherits,
       modelType: model.type,
-      fieldList: this.createTableFromFieldList(fullFieldsList, hasBaseClass),
+      fieldList: this.createTableFromFieldList(
+        fullFieldsList,
+        hasBaseClass,
+        model
+      ),
       fullFields: fullFields
     };
 
@@ -494,7 +493,7 @@ class Generator {
     return this.cleanDocLines(lines);
   }
 
-  createTableFromFieldList(fieldList, hasBaseClass) {
+  createTableFromFieldList(fieldList, hasBaseClass, model) {
     return fieldList
       .filter(
         field => field.fieldName != "type" && field.fieldName != "@context"
@@ -505,7 +504,8 @@ class Generator {
           field,
           this.models,
           this.enumMap,
-          hasBaseClass
+          hasBaseClass,
+          model
         )
       );
   }
@@ -559,6 +559,7 @@ class Generator {
         }
 
         let field = {
+          memberName: node.id,
           fieldName: this.getPropNameFromFQP(node.id),
           alternativeTypes: node.rangeIncludes.map(type =>
             this.expandPrefix(type, node.isArray)
@@ -576,6 +577,10 @@ class Generator {
         };
 
         node.domainIncludes.forEach(prop => {
+          // pending schema stuff in extensions are defined as pending:, but the pending
+          // json ld identifies itself as schema:
+          prop = prop.replace(/^pending:/, "schema:");
+
           let model;
           if (extension.preferOA) {
             model =
@@ -1012,7 +1017,12 @@ class Generator {
   getCompacted(url) {
     if (!url) return "";
     if (/^ArrayOf#/.test(url)) url = url.replace(/^ArrayOf#/, "");
-    if (!url.match(/^https?:/i)) return url;
+    if (!url.match(/^https?:/i)) {
+      if (url[0] === "#") {
+        url = url.substr(1);
+      }
+      return url;
+    }
 
     url = url.replace(/^http:/i, "https:");
 
@@ -1049,6 +1059,13 @@ class Generator {
     let props = this.getFullNamespace(prop);
     props.pop();
     return props;
+  }
+
+  getPrefix(prop) {
+    let ns = this.getNamespace(prop);
+    if (!ns) return null;
+
+    return ns[0];
   }
 
   getPropLinkFromFQP(prop) {
