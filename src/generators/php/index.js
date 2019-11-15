@@ -136,6 +136,7 @@ class PHP extends Generator {
   getValidationBaseType(prefixedTypeName, isExtension, model) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
     let compactedTypeName = this.getCompacted(prefixedTypeName);
+    let extension = this.extensions[model.extensionPrefix];
     switch (typeName) {
       case "Boolean":
         return "bool";
@@ -159,20 +160,16 @@ class PHP extends Generator {
         return "null";
       default:
         let camelName = this.convertToCamelCase(typeName);
-        if (this.enumMap[compactedTypeName]) {
-          let extension = this.extensions[model.extensionPrefix];
-          if (extension && extension.preferOA && this.enumMap[typeName]) {
-            compactedTypeName = typeName;
-          }
+        if (this.enumMap[typeName] && extension && extension.preferOA) {
+          return "\\OpenActive\\Enums\\" + camelName;
+        } else if (this.enumMap[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Enums\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Enums\\" + camelName;
+        } else if (this.models[typeName] && extension && extension.preferOA) {
+          return "\\OpenActive\\Models\\" + camelName;
         } else if (this.models[compactedTypeName]) {
-          let extension = this.extensions[model.extensionPrefix];
-          if (extension && extension.preferOA && this.models[typeName]) {
-            compactedTypeName = typeName;
-          }
           if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
           }
