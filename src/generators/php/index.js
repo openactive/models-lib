@@ -174,14 +174,11 @@ class PHP extends Generator {
             return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
           }
           return "\\OpenActive\\Models\\OA\\" + camelName;
-        } else if (isExtension) {
-          // Extensions may reference schema.org, for which we have no reference here to confirm
-          console.log(
-            "Extension referenced schema.org property: " + typeName,
-            prefixedTypeName,
-            compactedTypeName
+        } else if (/^schema:/.test(model.memberName)) {
+          console.info(
+            `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
           );
-          return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
+          return; // nothing to return here
         } else {
           throw new Error(
             "Unrecognised type or enum referenced: " +
@@ -253,18 +250,6 @@ class PHP extends Generator {
     }
   }
 
-  renderJsonConverter(field, propertyType) {
-    if (propertyType == "TimeSpan?") {
-      return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
-    } else if (field.requiredType == "https://schema.org/Time") {
-      return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
-    } else if (propertyType.indexOf("Values<") > -1) {
-      return `[JsonConverter(typeof(ValuesConverter))]`;
-    } else {
-      return "";
-    }
-  }
-
   createPropertyFromField(field, models, enumMap, hasBaseClass) {
     let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
@@ -272,7 +257,6 @@ class PHP extends Generator {
     let propertyName = this.convertToCamelCase(field.fieldName);
     let propertyType = this.createLangTypeString(field, isExtension);
     let propertyTypes = this.createValidationTypesArray(field, isExtension);
-    let jsonConverter = this.renderJsonConverter(field, propertyType);
 
     let obj = {
       memberName: memberName,
@@ -300,12 +284,7 @@ class PHP extends Generator {
       }
 
       return {
-        ...obj,
-        decorators: [
-          `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
-          jsonConverter
-        ].filter(val => val),
-        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `
+        ...obj
       };
     }
   }
@@ -342,10 +321,17 @@ class PHP extends Generator {
       .map(fullyQualifiedType =>
         this.getValidationType(fullyQualifiedType, isExtension, field)
       )
+      .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
 
     if (types.length == 0) {
-      throw new Error("No type found for field: " + field.fieldName);
+      if (/^schema:/.test(field.memberName)) {
+        console.warn(
+          `*** ${field.memberName} field has 0 valid types (however this is kind of expected for schema).`
+        );
+      } else {
+        throw new Error("No type found for field: " + field.fieldName);
+      }
     }
 
     return types;

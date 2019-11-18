@@ -221,15 +221,11 @@ class Ruby extends Generator {
             );
           }
           return "OpenActive::Models::" + this.convertToCamelCase(typeName);
-        } else if (isExtension) {
-          // Extensions may reference schema.org, for which we have no reference here to confirm
-          console.log(
-            "Extension referenced schema.org property: " + typeName,
-            prefixedTypeName
+        } else if (/^schema:/.test(model.memberName)) {
+          console.info(
+            `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
           );
-          return (
-            "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
-          );
+          return; // nothing to return here
         } else {
           throw new Error(
             "Unrecognised type or enum referenced: " +
@@ -301,18 +297,6 @@ class Ruby extends Generator {
     }
   }
 
-  renderJsonConverter(field, propertyType) {
-    if (propertyType == "TimeSpan?") {
-      return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
-    } else if (field.requiredType == "https://schema.org/Time") {
-      return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
-    } else if (propertyType.indexOf("Values<") > -1) {
-      return `[JsonConverter(typeof(ValuesConverter))]`;
-    } else {
-      return "";
-    }
-  }
-
   createPropertyFromField(field, models, enumMap, hasBaseClass, model) {
     let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
@@ -324,8 +308,6 @@ class Ruby extends Generator {
       isExtension,
       model
     );
-    let jsonConverter = this.renderJsonConverter(field, propertyType);
-
     let obj = {
       memberName: memberName,
       propName: field.fieldName,
@@ -355,12 +337,7 @@ class Ruby extends Generator {
       }
 
       return {
-        ...obj,
-        decorators: [
-          `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
-          jsonConverter
-        ].filter(val => val),
-        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `
+        ...obj
       };
     }
   }
@@ -393,10 +370,17 @@ class Ruby extends Generator {
       .map(fullyQualifiedType =>
         this.getLangType(fullyQualifiedType, isExtension, field)
       )
+      .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
 
     if (types.length == 0) {
-      throw new Error("No type found for field: " + field.fieldName);
+      if (/^schema:/.test(field.memberName)) {
+        console.warn(
+          `*** ${field.memberName} field has 0 valid types (however this is kind of expected for schema).`
+        );
+      } else {
+        throw new Error("No type found for field: " + field.fieldName);
+      }
     }
 
     return types;
