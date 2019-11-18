@@ -1,6 +1,6 @@
 {
   "extensions": {
-    "url": "https://www.openactive.io/extensions/extensions.jsonld",
+    "url": "https://openactive.io/extension",
     "heading": "OpenActive Extensions context",
     "description": "OpenActive Extension contexts"
   }

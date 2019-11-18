@@ -1,9 +1,11 @@
 import DotNet from "./generators/dot_net";
 import PHP from "./generators/php";
+import Ruby from "./generators/ruby";
 
 let generators = {
   ".NET": DotNet,
-  PHP: PHP
+  PHP: PHP,
+  Ruby: Ruby
 };
 
 const program = require("commander");
@@ -17,6 +19,7 @@ program
   .command("generate <language>")
   .option("--no-beta", "Disable the beta extension")
   .option("-d, --destination <destination>", "Output directory")
+  .option("--method <methodName>")
   .action((language, options) => {
     if (!options.destination) {
       console.error("Destination must be specified");
@@ -34,9 +37,8 @@ program
       return;
     }
 
-    let generator = new Generator();
-
     let extensions = {
+      ...require("./extensions/_hacks"),
       ...require("./extensions/_extensions")
     };
 
@@ -47,9 +49,17 @@ program
       };
     }
 
-    generator
-      .generateModelClassFiles(options.destination, extensions)
-      .catch(e => console.error(e));
+    let action = options.method || "generateModelClassFiles";
+
+    let run = async () => {
+      let generator = new Generator(options.destination, extensions);
+
+      await generator.initialize();
+
+      await generator[action].apply(generator);
+    };
+
+    run().catch(e => console.error(e));
   });
 
 program.command("schema_models").action(() => {});

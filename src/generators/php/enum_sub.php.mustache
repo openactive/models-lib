@@ -1,6 +1,6 @@
 <?php
 
-namespace OpenActive\Enums\\{{{typeName}}};
+namespace OpenActive\Enums{{{@root.subNamespaceText}}}\\{{{typeName}}};
 
 /**
 {{#enumDoc}}
@@ -8,7 +8,7 @@ namespace OpenActive\Enums\\{{{typeName}}};
 {{/enumDoc}}
  *
  */
-class {{{value}}} extends \OpenActive\Enums\\{{{typeName}}}
+class {{{value}}} extends \OpenActive\Enums{{{@root.subNamespaceText}}}\\{{{typeName}}}
 {
     const value = "{{{value}}}";
     const memberVal = "{{{memberVal}}}";

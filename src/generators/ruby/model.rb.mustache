@@ -1,0 +1,31 @@
+{{#each namespace_parts}}
+{{{module_start @index}}}module {{{.}}}
+{{/each}}
+{{#indent}}
+{{#classDoc}}
+# {{{ . }}}
+{{/classDoc}}
+class {{{className}}} < {{{ inherits }}}
+  def type
+    "{{modelType}}"
+  end
+  property :type, as: "type"
+
+{{#fieldList}}
+  # @return {{{propertyType}}}
+  attr_accessor :{{{snakePropName propName}}}
+  property :{{{snakePropName propName}}}, as: "{{memberName}}"
+  validate_property :{{{snakePropName propName}}}, types: [
+  {{# propertyTypes }}
+    "{{{ . }}}",
+  {{/propertyTypes }}
+  ]
+{{#unless @last}}
+
+{{/unless}}
+{{/fieldList}}
+end
+{{/indent}}
+{{#each namespace_parts}}
+{{{module_end @index}}}end
+{{/each}}

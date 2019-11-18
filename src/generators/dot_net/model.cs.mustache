@@ -21,16 +21,20 @@ namespace OpenActive.NET
 {{#fieldList}}
 
 
-    {{# description }}
+    {{#if description }}
         /// <summary>
+        {{#each description}}
         /// {{{ . }}}
+        {{/each}}
         /// </summary>
-    {{/description }}
+    {{/if }}
+    {{#if codeExample }}
         /// <example>
-    {{# codeExample }}
+        {{#each codeExample }}
         /// {{{ . }}}
-    {{/codeExample }}
+        {{/ each }}
         /// </example>
+    {{/if }}
     {{# decorators }}
         {{{ . }}}
     {{/decorators }}

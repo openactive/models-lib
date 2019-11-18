@@ -4,7 +4,7 @@ import Handlebars from "handlebars";
 const DATA_MODEL_DOCS_URL_PREFIX =
   "https://developer.openactive.io/data-model/types/";
 
-class PHP extends Generator {
+class Ruby extends Generator {
   mutateExtensions(extensions) {
     return {
       ...require("../../extensions/_schema.json"),
@@ -15,28 +15,68 @@ class PHP extends Generator {
   // using inplace of standard namespace
   getBasicNamespace(prop) {
     if (this.includedInSchema(prop)) {
-      return ["SchemaOrg"];
+      return ["schema"];
     }
     return [];
   }
 
-  async renderModel(data) {
-    const includedInSchema = this.includedInSchema(data.modelType);
+  getNamespaceParts(prop, type) {
+    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(name => {
+      return this.snakeToCanonicalName(name);
+    });
+  }
 
-    if (!includedInSchema) {
-      data["subNamespaceText"] = "\\OA";
-    } else {
-      data["subNamespaceText"] = "\\SchemaOrg";
-    }
+  formatNamespace(parts) {
+    return parts.map(part => `::${part}`).join("");
+  }
 
+  setupHandlebars() {
     let that = this;
     Handlebars.registerHelper("pascalCasePropName", function() {
       return new Handlebars.SafeString(that.convertToCamelCase(this.propName));
     });
 
+    Handlebars.registerHelper("snakePropName", propName => {
+      return new Handlebars.SafeString(that.canonicalToSnakeName(propName));
+    });
+
+    Handlebars.registerHelper("module_start", context => {
+      return "  ".repeat(context);
+    });
+    Handlebars.registerHelper("module_end", function(context, options) {
+      let modules = options.data.root.namespace_parts.length;
+
+      return "  ".repeat(modules - context - 1);
+    });
+    Handlebars.registerHelper("indent", function(context, options) {
+      let modules = context.data.root.namespace_parts.length;
+      let indent = "  ".repeat(modules);
+
+      let content = context.fn(this);
+
+      let formatted =
+        content
+          .trimEnd()
+          .split("\n")
+          .map(line => {
+            if (line.trimEnd().length > 0) {
+              return `${indent}${line}`;
+            } else {
+              return "";
+            }
+          })
+          .join("\n") + "\n";
+
+      return formatted;
+    });
+  }
+
+  async renderModel(data) {
+    data["namespace_parts"] = this.getNamespaceParts(data.modelType, "Models");
+
     this.modelTemplate =
       this.modelTemplate ||
-      (await this.loadTemplate(__dirname + "/model.php.mustache"));
+      (await this.loadTemplate(__dirname + "/model.rb.mustache"));
 
     return this.modelTemplate(data);
   }
@@ -44,54 +84,60 @@ class PHP extends Generator {
   async renderEnum(data) {
     const includedInSchema = this.includedInSchema(data.enumType);
 
-    if (!includedInSchema) {
-      data["subNamespaceText"] = "";
-    } else {
-      data["subNamespaceText"] = "\\SchemaOrg";
-    }
+    data["namespace_parts"] = this.getNamespaceParts(data.enumType, "Enums");
 
     this.enumTemplate = this.enumTemplate || {
-      main: await this.loadTemplate(__dirname + "/enum_main.php.mustache"),
-      sub: await this.loadTemplate(__dirname + "/enum_sub.php.mustache")
+      main: await this.loadTemplate(__dirname + "/enum_main.rb.mustache")
     };
 
     let response = {
       [this.getEnumFilename(data)]: this.enumTemplate.main(data)
     };
 
-    for (let value of data.values) {
-      let filename = this.getEnumFilename(data, value.value);
-      response[filename] = this.enumTemplate.sub({ ...data, ...value });
-    }
-
     return response;
   }
 
+  createIndexFiles() {
+    return {
+      "/files_index.json": JSON.stringify(this.generatedFiles, null, 2)
+    };
+  }
+
   getDirs() {
-    return ["Models/", "Models/SchemaOrg/", "Models/OA/", "Enums/"];
+    return ["models/", "models/schema/", "enums/"];
   }
 
   getModelFilename(model) {
-    if (this.includedInSchema(model.type)) {
-      return (
-        "/Models/SchemaOrg/" + this.getPropNameFromFQP(model.type) + ".php"
-      );
-    }
-
-    return "/Models/OA/" + this.getPropNameFromFQP(model.type) + ".php";
-  }
-
-  getEnumFilename(thisEnum, val) {
     let parts = [
-      "Enums",
-      ...this.getBasicNamespace(thisEnum.enumType),
-      this.getPropNameFromFQP(thisEnum.enumType),
-      val
+      "models",
+      ...this.getBasicNamespace(model.type),
+      this.getPropNameFromFQP(model.type)
     ];
 
-    parts = parts.filter(val => !!val);
+    parts = parts
+      .filter(val => !!val)
+      .map(name => {
+        console.log(name);
+        return this.canonicalToSnakeName(name);
+      });
 
-    return "/" + parts.join("/") + ".php";
+    return "/" + parts.join("/") + ".rb";
+  }
+
+  getEnumFilename(thisEnum) {
+    let parts = [
+      "enums",
+      ...this.getBasicNamespace(thisEnum.enumType),
+      this.getPropNameFromFQP(thisEnum.enumType)
+    ];
+
+    parts = parts
+      .filter(val => !!val)
+      .map(name => {
+        return this.canonicalToSnakeName(name);
+      });
+
+    return "/" + parts.join("/") + ".rb";
   }
 
   convertToClassName(value) {
@@ -105,17 +151,7 @@ class PHP extends Generator {
     return value;
   }
 
-  validationTypeToLangType(validationType) {
-    if (validationType === "Time") {
-      return "string";
-    }
-    if (validationType === "Time[]") {
-      return "string[]";
-    }
-    return validationType;
-  }
-
-  getValidationType(fullyQualifiedType, isExtension, field) {
+  getLangType(fullyQualifiedType, isExtension, field) {
     let baseType = this.getValidationBaseType(
       fullyQualifiedType,
       isExtension,
@@ -141,6 +177,7 @@ class PHP extends Generator {
       case "Boolean":
         return "bool";
       case "Date": // TODO: Find better way of representing Date
+        return "Date";
       case "DateTime":
         return "DateTime";
       case "Time":
@@ -148,32 +185,42 @@ class PHP extends Generator {
       case "Integer":
         return "int";
       case "Float":
+        return "float";
       case "Number":
         return "float";
-      case "Property":
       case "Text":
-      case "URL":
         return "string";
       case "Duration":
         return "DateInterval";
+      case "URL":
+      case "Property":
+        return "URI";
       case "null":
         return "null";
       default:
-        let camelName = this.convertToCamelCase(typeName);
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return "\\OpenActive\\Enums\\" + camelName;
+          return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (this.enumMap[compactedTypeName]) {
-          if (this.includedInSchema(compactedTypeName)) {
-            return "\\OpenActive\\Enums\\SchemaOrg\\" + camelName;
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.enumMap[typeName]) {
+            compactedTypeName = typeName;
           }
-          return "\\OpenActive\\Enums\\" + camelName;
+
+          if (this.includedInSchema(compactedTypeName)) {
+            return (
+              "OpenActive::Enums::Schema::" + this.convertToCamelCase(typeName)
+            );
+          }
+          return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return "\\OpenActive\\Models\\" + camelName;
+          return "OpenActive::Models::" + this.convertToCamelCase(typeName);
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
-            return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
+            return (
+              "OpenActive::Models::Schema::" + this.convertToCamelCase(typeName)
+            );
           }
-          return "\\OpenActive\\Models\\OA\\" + camelName;
+          return "OpenActive::Models::" + this.convertToCamelCase(typeName);
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -250,14 +297,17 @@ class PHP extends Generator {
     }
   }
 
-  createPropertyFromField(field, models, enumMap, hasBaseClass) {
+  createPropertyFromField(field, models, enumMap, hasBaseClass, model) {
     let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
     let propertyType = this.createLangTypeString(field, isExtension);
-    let propertyTypes = this.createValidationTypesArray(field, isExtension);
-
+    let propertyTypes = this.createValidationTypesArray(
+      field,
+      isExtension,
+      model
+    );
     let obj = {
       memberName: memberName,
       propName: field.fieldName,
@@ -270,7 +320,10 @@ class PHP extends Generator {
     if (field.obsolete) {
       return {
         ...obj,
-        isObsolete: true
+        decorators: [
+          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
+        ],
+        property: `public override ${propertyType} ${propertyName} { get; set; }`
       };
     } else {
       let methodType = "";
@@ -290,11 +343,7 @@ class PHP extends Generator {
   }
 
   createLangTypeString(field, isExtension) {
-    const validationTypes = this.createValidationTypesArray(field, isExtension);
-
-    const types = validationTypes.map(type =>
-      this.validationTypeToLangType(type)
-    );
+    const types = this.createValidationTypesArray(field, isExtension);
 
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `${types.join("|")}` : types[0];
@@ -315,11 +364,11 @@ class PHP extends Generator {
       }
     });
 
-    // We get the PHP types from given schema/OA ones,
+    // We get the types from given schema/OA ones,
     // and filter out duplicated types
     types = types
       .map(fullyQualifiedType =>
-        this.getValidationType(fullyQualifiedType, isExtension, field)
+        this.getLangType(fullyQualifiedType, isExtension, field)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
@@ -345,15 +394,15 @@ class PHP extends Generator {
       );
 
       if (this.includedInSchema(subClassOf)) {
-        return `\\OpenActive\\Models\\SchemaOrg\\${subClassOfName}`;
+        return `::OpenActive::Models::Schema::${subClassOfName}`;
       }
 
       if (this.includedInSchema(model.type)) {
         // If type is from schema.org, we override schema.org
-        return `\\OpenActive\\Models\\SchemaOrg\\${subClassOfName}`;
+        return `::OpenActive::Models::Schema::${subClassOfName}`;
       }
 
-      return `\\OpenActive\\Models\\OA\\${subClassOfName}`;
+      return `::OpenActive::Models::${subClassOfName}`;
     }
 
     if (derivedFrom) {
@@ -362,22 +411,22 @@ class PHP extends Generator {
       );
 
       if (this.includedInSchema(derivedFrom)) {
-        return `\\OpenActive\\Models\\SchemaOrg\\${derivedFromName}`;
+        return `::OpenActive::Models::Schema::${derivedFromName}`;
       }
 
       if (this.includedInSchema(model.type)) {
         // If type is from schema.org, we override schema.org
-        return `\\OpenActive\\Models\\SchemaOrg\\${derivedFromName}`;
+        return `::OpenActive::Models::Schema::${derivedFromName}`;
       }
 
       // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-      return `\\OpenActive\\BaseModel`;
+      return `::OpenActive::BaseModel`;
     }
 
     // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
     // throw new Error("No base class specified for: " + model.type);
-    return `\\OpenActive\\BaseModel`;
+    return `::OpenActive::BaseModel`;
   }
 }
 
-export default PHP;
+export default Ruby;

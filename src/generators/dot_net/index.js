@@ -35,7 +35,7 @@ class DotNet extends Generator {
   }
 
   getEnumFilename(typeName) {
-    return "/enums/" + typeName + ".cs";
+    return "/enums/" + this.getPropNameFromFQP(typeName) + ".cs";
   }
 
   convertToClassName(value) {
@@ -67,6 +67,7 @@ class DotNet extends Generator {
 
   getLangBaseType(prefixedTypeName, enumMap, modelsMap, isExtension) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
         return "bool?";
@@ -88,20 +89,27 @@ class DotNet extends Generator {
       case "Property":
         return "Uri";
       default:
-        if (enumMap[typeName]) {
-          if (this.includedInSchema(enumMap[typeName].namespace)) {
+        if (enumMap[compactedTypeName]) {
+          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
             return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
           } else {
             return this.convertToCamelCase(typeName) + "?";
           }
         } else if (modelsMap[typeName]) {
           return this.convertToCamelCase(typeName);
+        } else if (this.includedInSchema(compactedTypeName)) {
+          return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
         } else if (isExtension) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
           return "Schema.NET." + this.convertToCamelCase(typeName);
         } else {
-          throw new Error("Unrecognised type or enum referenced: " + typeName);
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
         }
     }
   }
@@ -141,9 +149,7 @@ class DotNet extends Generator {
   }
 
   createPropertyFromField(field, models, enumMap, hasBaseClass) {
-    let memberName = field.extensionPrefix
-      ? `${field.extensionPrefix}:${field.fieldName}`
-      : field.fieldName;
+    let memberName = field.memberName || field.fieldName;
     let isExtension = !!field.extensionPrefix;
     let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     let propertyName = this.convertToCamelCase(field.fieldName);
@@ -230,8 +236,7 @@ class DotNet extends Generator {
       }
     } else {
       // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-      // throw new Error("No base class specified for: " + model.type);
-      return "None";
+      throw new Error("No base class specified for: " + model.type);
     }
   }
 }

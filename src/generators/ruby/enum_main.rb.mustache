@@ -1,0 +1,18 @@
+require 'typesafe_enum'
+
+{{#each namespace_parts}}
+{{{module_start @index}}}module {{{.}}}
+{{/each}}
+{{#indent}}
+{{#enumDoc}}
+# {{{ . }}}
+{{/enumDoc}}
+class {{{typeName}}} < TypesafeEnum::Base
+{{#each values}}
+  new :{{{value}}}, "{{{memberVal}}}"
+{{/each}}
+end
+{{/indent}}
+{{#each namespace_parts}}
+{{{module_end @index}}}end
+{{/each}}
