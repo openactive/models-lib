@@ -4,19 +4,23 @@ import fsExtra from "fs-extra";
 import path from "path";
 import request from "then-request";
 import isobject from "isobject";
-import * as jsonld from "jsonld";
+import jsonld from "jsonld";
 import Handlebars from "handlebars";
+import axios from "axios";
 
 class Generator {
   constructor(dataModelDirectory, extensions) {
     // Returns the latest version of the models map
     this.dataModelDirectory = dataModelDirectory;
     this.extensions = extensions;
+    this.cache = [];
 
     this.models = getModels();
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
     this.generatedFiles = [];
+
+    jsonld.documentLoader = this.customLoader.bind(this);
   }
 
   // memoize the promise by overwriting the function with resulting promise
@@ -31,12 +35,6 @@ class Generator {
     this.extensions = this.mutateExtensions(this.extensions);
 
     await this.loadExtensions(this.extensions);
-
-    for (let modelName of Object.keys(this.models)) {
-      let model = this.models[modelName];
-
-      model.tree = this.createModelTree(modelName);
-    }
   }
 
   async setupHandlebars() {}
@@ -323,25 +321,27 @@ class Generator {
       this.storeNamespaces(extension["@context"]);
     }
 
-    for (let prefix of Object.keys(extensions)) {
-      let extension = extensions[prefix].spec;
+    await Promise.all(
+      Object.keys(extensions).map(async prefix => {
+        let extension = extensions[prefix].spec;
 
-      if (!extension || !extension["@graph"]) {
-        continue;
-      }
+        if (!extension || !extension["@graph"]) {
+          return;
+        }
 
-      if (prefix == "beta") {
-        Object.assign(extension["@context"][1], {
-          isArray: "https://openactive.com/ns-noncompliant#isArray",
-          githubIssue: "https://openactive.com/ns-noncompliant#githubIssue"
-        });
-      }
+        if (prefix == "beta") {
+          Object.assign(extension["@context"][1], {
+            isArray: "https://openactive.com/ns-noncompliant#isArray",
+            githubIssue: "https://openactive.com/ns-noncompliant#githubIssue"
+          });
+        }
 
-      let expanded = await jsonld.compact(extension, extension["@context"]);
-      let compacted = await jsonld.compact(expanded, this.namespaces);
+        let expanded = await jsonld.compact(extension, extension["@context"]);
+        let compacted = await jsonld.compact(expanded, this.namespaces);
 
-      extensions[prefix].graph = compacted["@graph"];
-    }
+        extensions[prefix].graph = compacted["@graph"];
+      })
+    );
 
     for (let prefix of Object.keys(extensions)) {
       let extension = extensions[prefix];
@@ -677,6 +677,14 @@ class Generator {
   }
 
   fillAugmentedSubclasses() {
+    console.log("Calculating inheritance trees");
+    for (let modelName of Object.keys(this.models)) {
+      let model = this.models[modelName];
+
+      model.tree = this.createModelTree(modelName);
+    }
+
+    console.log("Working out known parents");
     // first of all normalize down the parents
     for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
@@ -701,13 +709,14 @@ class Generator {
       model.subClassesOf = subclasses;
     }
 
+    console.log("Picking the primary parents");
     // another pass utilising the data just filled in above to pick the primary parent.
     for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
 
       if (!model.subClassesOf) continue;
 
-      let tree = this.createModelTree(typeName);
+      let tree = model.tree;
 
       // filter off any enum paths as these are invalid for class inheritance
       tree = tree.filter(path => {
@@ -743,22 +752,6 @@ class Generator {
     let splitUrl = url.split("/");
     let issueNumber = splitUrl[splitUrl.length - 1];
     return "[#" + issueNumber + "](" + url + ")";
-  }
-
-  async getExtension(extensionUrl) {
-    let response = await request("GET", extensionUrl, {
-      accept: "application/ld+json"
-    });
-    if (response && response.statusCode == 200) {
-      let rawbody = response.body.toString("utf8");
-
-      rawbody = rawbody.replace(/http:\/\/schema\.org/g, "https://schema.org");
-
-      let body = JSON.parse(rawbody);
-      return body["@context"] ? body : undefined;
-    } else {
-      return undefined;
-    }
   }
 
   getParentModel(model) {
@@ -1117,6 +1110,56 @@ class Generator {
     }
 
     return this.includedInSchema(derivedFrom);
+  }
+
+  async _request(url) {
+    let response = await axios.get(url, {
+      Accept: "application/ld+json",
+      transformResponse: response => {
+        let body = response.replace(
+          /http:\/\/schema\.org/g,
+          "https://schema.org"
+        );
+        body = JSON.parse(body);
+
+        return body;
+      }
+    });
+
+    return response.data;
+  }
+
+  async request(url) {
+    if (this.cache[url]) {
+      console.log(`requesting ${url} (cache hit)`);
+
+      return this.cache[url];
+    }
+
+    console.log(`requesting ${url} (cache miss)`);
+
+    this.cache[url] = this._request(url); //no-await
+
+    return this.cache[url];
+  }
+
+  async getExtension(extensionUrl) {
+    let response = await this.request(extensionUrl);
+
+    if (!response) return;
+
+    if (!response["@context"]) return;
+    return response;
+  }
+
+  async customLoader(url) {
+    let body = await this.request(url);
+
+    return {
+      contextUrl: null,
+      document: body,
+      documentUrl: url
+    };
   }
 }
 
