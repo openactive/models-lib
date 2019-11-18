@@ -2,7 +2,6 @@ import { getEnums, getMetaData, getModels } from "@openactive/data-models";
 import { constants as fsConstants, promises as fs } from "fs";
 import fsExtra from "fs-extra";
 import path from "path";
-import request from "then-request";
 import isobject from "isobject";
 import jsonld from "jsonld";
 import Handlebars from "handlebars";
