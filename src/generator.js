@@ -676,13 +676,6 @@ class Generator {
   }
 
   fillAugmentedSubclasses() {
-    console.log("Calculating inheritance trees");
-    for (let modelName of Object.keys(this.models)) {
-      let model = this.models[modelName];
-
-      model.tree = this.createModelTree(modelName);
-    }
-
     console.log("Working out known parents");
     // first of all normalize down the parents
     for (let typeName of Object.keys(this.models)) {
@@ -706,6 +699,13 @@ class Generator {
       });
 
       model.subClassesOf = subclasses;
+    }
+
+    console.log("Calculating inheritance trees");
+    for (let typeName of Object.keys(this.models)) {
+      let model = this.models[typeName];
+
+      model.tree = this.createModelTree(typeName);
     }
 
     console.log("Picking the primary parents");
