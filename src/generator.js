@@ -734,7 +734,7 @@ class Generator {
   }
 
   generateMemberNames() {
-    for(let typeName of Object.keys(this.models)) {
+    for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
 
       let modelPrefix = this.getPrefix(model.type);
