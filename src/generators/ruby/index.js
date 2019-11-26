@@ -187,7 +187,7 @@ class Ruby extends Generator {
       case "Float":
         return "float";
       case "Number":
-        return "float";
+        return "Number";
       case "Text":
         return "string";
       case "Duration":
@@ -308,6 +308,11 @@ class Ruby extends Generator {
       isExtension,
       model
     );
+
+    if (['oa', 'schema'].includes(this.getPrefix(memberName))) {
+      memberName = this.getPropNameFromFQP(memberName);
+    }
+
     let obj = {
       memberName: memberName,
       propName: field.fieldName,
@@ -319,23 +324,9 @@ class Ruby extends Generator {
 
     if (field.obsolete) {
       return {
-        ...obj,
-        decorators: [
-          `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
-        ],
-        property: `public override ${propertyType} ${propertyName} { get; set; }`
+        ...obj
       };
     } else {
-      let methodType = "";
-      if (!isExtension && hasBaseClass && (isNew || field.override)) {
-        methodType = "new ";
-      }
-
-      let order = field.order;
-      if (isExtension) {
-        order += 1000;
-      }
-
       return {
         ...obj
       };

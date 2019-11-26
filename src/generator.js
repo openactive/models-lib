@@ -719,12 +719,29 @@ class Generator {
 
       // filter off any enum paths as these are invalid for class inheritance
       tree = tree.filter(path => {
-        return !path.includes("schema:Enumeration");
+        if (path.includes("schema:Enumeration")) return false;
+        let modelName = path[1];
+        if (!this.models[modelName]) return false;
+
+        return true;
       });
 
       if (tree.length > 0) {
         //todo: better path picking, eventually multi-inheritance
         model.subClassOf = tree[0][1];
+      }
+    }
+  }
+
+  generateMemberNames() {
+    for(let typeName of Object.keys(this.models)) {
+      let model = this.models[typeName];
+
+      let modelPrefix = this.getPrefix(model.type);
+
+      for (let fieldName of Object.keys(model.fields)) {
+        let field = model.fields[fieldName];
+        let fieldPrefix = this.getPrefix(field.memberName) || modelPrefix;
       }
     }
   }
