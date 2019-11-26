@@ -169,10 +169,37 @@ class Ruby extends Generator {
     }
   }
 
+  getDocType(fullyQualifiedType, isExtension, field) {
+    let baseType = this.getDocBaseType(fullyQualifiedType, isExtension, field);
+    if (this.isArray(fullyQualifiedType)) {
+      return `Array<${baseType}>`;
+    } else {
+      return baseType;
+    }
+  }
+
+  getDocBaseType(prefixedTypeName, isExtension, model) {
+    let typeName = this.getPropNameFromFQP(prefixedTypeName);
+
+    switch (typeName) {
+      case "Boolean":
+        return "Boolean";
+      case "null":
+      case "nil":
+        return "nil";
+      case "Number":
+        return "BigDecimal";
+      case "Text":
+        return "String";
+      case "Duration":
+        return "ActiveSupport::Duration";
+    }
+
+    return this.getValidationBaseType(prefixedTypeName, isExtension, model);
+  }
+
   getValidationBaseType(prefixedTypeName, isExtension, model) {
     let typeName = this.getPropNameFromFQP(prefixedTypeName);
-    let compactedTypeName = this.getCompacted(prefixedTypeName);
-    let extension = this.extensions[model.extensionPrefix];
     switch (typeName) {
       case "Boolean":
         return "bool";
@@ -198,6 +225,9 @@ class Ruby extends Generator {
       case "null":
         return "null";
       default:
+        let compactedTypeName = this.getCompacted(prefixedTypeName);
+        let extension = this.extensions[model.extensionPrefix];
+
         if (this.enumMap[typeName] && extension && extension.preferOA) {
           return "OpenActive::Enums::" + this.convertToCamelCase(typeName);
         } else if (this.enumMap[compactedTypeName]) {
@@ -309,7 +339,7 @@ class Ruby extends Generator {
       model
     );
 
-    if (['oa', 'schema'].includes(this.getPrefix(memberName))) {
+    if (["oa", "schema"].includes(this.getPrefix(memberName))) {
       memberName = this.getPropNameFromFQP(memberName);
     }
 
@@ -334,10 +364,9 @@ class Ruby extends Generator {
   }
 
   createLangTypeString(field, isExtension) {
-    const types = this.createValidationTypesArray(field, isExtension);
+    const types = this.createDocTypesArray(field, isExtension);
 
-    // OpenActive SingleValues not allow many of the same type, only allows one
-    return types.length > 1 ? `${types.join("|")}` : types[0];
+    return `[${types.join(",")}]`;
   }
 
   createValidationTypesArray(field, isExtension) {
@@ -360,6 +389,43 @@ class Ruby extends Generator {
     types = types
       .map(fullyQualifiedType =>
         this.getLangType(fullyQualifiedType, isExtension, field)
+      )
+      .filter(a => !!a)
+      .filter((val, idx, self) => self.indexOf(val) === idx);
+
+    if (types.length == 0) {
+      if (/^schema:/.test(field.memberName)) {
+        console.warn(
+          `*** ${field.memberName} field has 0 valid types (however this is kind of expected for schema).`
+        );
+      } else {
+        throw new Error("No type found for field: " + field.fieldName);
+      }
+    }
+
+    return types;
+  }
+
+  createDocTypesArray(field, isExtension) {
+    let types = []
+      .concat(field.alternativeTypes)
+      .concat(field.requiredType)
+      .concat(field.alternativeModels)
+      .concat(field.model)
+      .filter(type => type !== undefined);
+
+    // Add nullable types
+    types.forEach(fullyQualifiedType => {
+      if (this.isTypeNullable(fullyQualifiedType, isExtension)) {
+        types.push("null");
+      }
+    });
+
+    // We get the types from given schema/OA ones,
+    // and filter out duplicated types
+    types = types
+      .map(fullyQualifiedType =>
+        this.getDocType(fullyQualifiedType, isExtension, field)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
