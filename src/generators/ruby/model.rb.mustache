@@ -6,6 +6,8 @@
 # {{{ . }}}
 {{/classDoc}}
 class {{{className}}} < {{{ inherits }}}
+  # @!attribute type
+  # @return [String]
   def type
     "{{modelType}}"
   end
@@ -13,9 +15,7 @@ class {{{className}}} < {{{ inherits }}}
 
 {{#fieldList}}
   # @return {{{propertyType}}}
-  attr_accessor :{{{snakePropName propName}}}
-  property :{{{snakePropName propName}}}, as: "{{memberName}}"
-  validate_property :{{{snakePropName propName}}}, types: [
+  define_property :{{{snakePropName propName}}}, as: "{{memberName}}", types: [
   {{# propertyTypes }}
     "{{{ . }}}",
   {{/propertyTypes }}
