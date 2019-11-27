@@ -258,6 +258,10 @@ class PHP extends Generator {
     let propertyType = this.createLangTypeString(field, isExtension);
     let propertyTypes = this.createValidationTypesArray(field, isExtension);
 
+    if (["oa", "schema"].includes(this.getPrefix(memberName))) {
+      memberName = this.getPropNameFromFQP(memberName);
+    }
+
     let obj = {
       memberName: memberName,
       propName: field.fieldName,

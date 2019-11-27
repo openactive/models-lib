@@ -18,6 +18,16 @@ class {{{className}}} extends {{{ inherits }}}
         return "{{modelType}}";
     }
 
+    public static function fieldList() {
+        $fields = [
+{{#fieldList}}
+            "{{{ propName }}}" => "{{{memberName}}}",
+{{/fieldList}}
+        ];
+
+        return array_merge(parent::fieldList(), $fields);
+    }
+
 {{#fieldList}}
     /**
 {{#description}}
