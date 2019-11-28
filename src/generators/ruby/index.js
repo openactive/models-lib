@@ -477,12 +477,12 @@ class Ruby extends Generator {
       }
 
       // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-      return `::OpenActive::BaseModel`;
+      return `::OpenActive::JsonLdModel`;
     }
 
     // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
     // throw new Error("No base class specified for: " + model.type);
-    return `::OpenActive::BaseModel`;
+    return `::OpenActive::JsonLdModel`;
   }
 }
 
