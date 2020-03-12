@@ -311,7 +311,7 @@ class PHP extends Generator {
     let extension = this.extensions[model.extensionPrefix];
     switch (typeName) {
       case "Boolean":
-        return "bool";
+        return 0;
       case "Date":
         return 1;
       case "DateTime":
