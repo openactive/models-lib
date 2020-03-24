@@ -573,13 +573,13 @@ class Generator {
           memberName: node.id,
           fieldName: this.getPropNameFromFQP(node.id),
           alternativeTypes: node.rangeIncludes.map(type =>
-            this.expandPrefix(type, node.isArray)
+            this.expandPrefix(type, node["@container"] == "@list")
           ),
           description: [
             node.comment +
-              (node.githubIssue
+              (node.discussionUrl
                 ? "\n\nIf you are using this property, please join the discussion at proposal " +
-                  this.renderGitHubIssueLink(node.githubIssue) +
+                  this.renderGitHubIssueLink(node.discussionUrl) +
                   "."
                 : "")
           ],
@@ -1132,10 +1132,13 @@ class Generator {
     let response = await axios.get(url, {
       Accept: "application/ld+json",
       transformResponse: response => {
-        let body = response.replace(
-          /http:\/\/schema\.org/g,
-          "https://schema.org"
-        );
+        let body = response
+          .replace(/http:\/\/schema\.org/g, "https://schema.org")
+          .replace(
+            /https:\/\/openactive\.io\/ns-beta\//g,
+            "https://openactive.io/ns-beta#"
+          );
+
         body = JSON.parse(body);
 
         return body;

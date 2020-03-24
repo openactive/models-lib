@@ -353,7 +353,7 @@ class PHP extends Generator {
     // and filter out duplicated types
     types = types
       .slice()
-      .sort((a,b) => {
+      .sort((a, b) => {
         let scoreA = this.validationTypeWeight(a, isExtension, field);
         let scoreB = this.validationTypeWeight(b, isExtension, field);
 
