@@ -45,8 +45,19 @@ class Generator {
   async dumpStructures() {
     await this.initialize();
 
+    await fs.writeFile("namespaces.json", JSON.stringify(this.namespaces, null, 2));
     await fs.writeFile("models.json", JSON.stringify(this.models, null, 2));
     await fs.writeFile("enums.json", JSON.stringify(this.enumMap, null, 2));
+
+    let all = {
+      "@context": this.namespaces,
+      "@graph": {
+        ...this.models,
+        ...this.enumMap
+      }
+    };
+
+    await fs.writeFile("all.json", JSON.stringify(all, null, 2));
   }
 
   async dumpTemplateData() {
@@ -330,8 +341,7 @@ class Generator {
 
         if (prefix == "beta") {
           Object.assign(extension["@context"][1], {
-            isArray: "https://openactive.com/ns-noncompliant#isArray",
-            githubIssue: "https://openactive.com/ns-noncompliant#githubIssue"
+            isArray: "https://openactive.com/ns-noncompliant#isArray"
           });
         }
 
@@ -584,7 +594,8 @@ class Generator {
                 : "")
           ],
           example: node.example,
-          extensionPrefix: extensionPrefix
+          extensionPrefix: extensionPrefix,
+          raw: node
         };
 
         node.domainIncludes.forEach(prop => {
