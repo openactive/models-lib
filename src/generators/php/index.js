@@ -140,7 +140,8 @@ class PHP extends Generator {
     switch (typeName) {
       case "Boolean":
         return "bool";
-      case "Date": // TODO: Find better way of representing Date
+      case "Date":
+        return "Date";
       case "DateTime":
         return "DateTime";
       case "Time":
@@ -304,6 +305,35 @@ class PHP extends Generator {
     return types.length > 1 ? `${types.join("|")}` : types[0];
   }
 
+  validationTypeWeight(prefixedTypeName, isExtension, model) {
+    let typeName = this.getPropNameFromFQP(prefixedTypeName);
+    let compactedTypeName = this.getCompacted(prefixedTypeName);
+    let extension = this.extensions[model.extensionPrefix];
+    switch (typeName) {
+      case "Boolean":
+        return 0;
+      case "Date":
+        return 1;
+      case "DateTime":
+        return 2;
+      case "Time":
+        return 3;
+      case "Integer":
+        return 7;
+      case "Float":
+      case "Number":
+        return 6;
+      case "Property":
+      case "Text":
+      case "URL":
+        return 5;
+      case "Duration":
+        return 4;
+      case "null":
+        return 8;
+    }
+  }
+
   createValidationTypesArray(field, isExtension) {
     let types = []
       .concat(field.alternativeTypes)
@@ -322,6 +352,15 @@ class PHP extends Generator {
     // We get the PHP types from given schema/OA ones,
     // and filter out duplicated types
     types = types
+      .slice()
+      .sort((a, b) => {
+        let scoreA = this.validationTypeWeight(a, isExtension, field);
+        let scoreB = this.validationTypeWeight(b, isExtension, field);
+
+        if (scoreA < scoreB) return 1;
+        if (scoreA > scoreB) return -1;
+        return 0;
+      })
       .map(fullyQualifiedType =>
         this.getValidationType(fullyQualifiedType, isExtension, field)
       )

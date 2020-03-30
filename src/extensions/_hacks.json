@@ -7,7 +7,8 @@
         "xsd": "http://www.w3.org/2001/XMLSchema#",
         "oaNoncompliant": "https://openactive.com/ns-noncompliant#",
         "isArray": "https://openactive.com/ns-noncompliant#isArray",
-        "githubIssue": "https://openactive.com/ns-noncompliant#githubIssue"
+        "githubIssue": "https://openactive.com/ns-noncompliant#githubIssue",
+        "schema": "https://schema.org/"
       },
       "@graph": [
         {
@@ -23,21 +24,6 @@
           "rdfs:label": "isArray",
           "rdfs:subPropertyOf": {
             "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
-          }
-        },
-        {
-          "@id": "githubIssue",
-          "@type": "rdf:Property",
-          "http://schema.org/domainIncludes": {
-            "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
-          },
-          "http://schema.org/rangeIncludes": {
-            "@id": "http://schema.org/Text"
-          },
-          "rdfs:comment": "---",
-          "rdfs:label": "githubIssue",
-          "rdfs:subPropertyOf": {
-            "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#githubIssue"
           }
         }
       ]
