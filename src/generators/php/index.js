@@ -357,8 +357,8 @@ class PHP extends Generator {
         let scoreA = this.validationTypeWeight(a, isExtension, field);
         let scoreB = this.validationTypeWeight(b, isExtension, field);
 
-        if (scoreA < scoreB) return 1;
-        if (scoreA > scoreB) return -1;
+        if (scoreA > scoreB) return 1;
+        if (scoreA < scoreB) return -1;
         return 0;
       })
       .map(fullyQualifiedType =>
