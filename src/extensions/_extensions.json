@@ -1,6 +1,6 @@
 {
   "extensions": {
-    "url": "https://openactive.io/extension",
+    "url": "https://openactive.io/ns-extension",
     "heading": "OpenActive Extensions context",
     "description": "OpenActive Extension contexts"
   }
