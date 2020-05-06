@@ -6,13 +6,10 @@
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "xsd": "http://www.w3.org/2001/XMLSchema#",
         "oaNoncompliant": "https://openactive.com/ns-noncompliant#",
-        "isArray": "https://openactive.com/ns-noncompliant#isArray",
-        "githubIssue": "https://openactive.com/ns-noncompliant#githubIssue",
         "schema": "https://schema.org/"
       },
       "@graph": [
         {
-          "@id": "isArray",
           "@type": "rdf:Property",
           "http://schema.org/domainIncludes": {
             "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
@@ -21,7 +18,6 @@
             "@id": "http://schema.org/Text"
           },
           "rdfs:comment": "---",
-          "rdfs:label": "isArray",
           "rdfs:subPropertyOf": {
             "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
           }
