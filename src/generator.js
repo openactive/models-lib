@@ -1002,7 +1002,7 @@ class Generator {
 
     return docLines
       .filter(val => val)
-      .map(val => val.replace(/(?!["`'])(@(?:id|type))(?!["`'])/gi, (_, $1) => '`' + $1 + '`'))
+      .map(val => val.replace(/(?!["`'])(@id|@type|input@name)(?!["`'])/gi, (_, $1) => '`' + $1 + '`'))
       .reduce((acc, val) => acc.concat(val.split("\n")), []);
   }
 
