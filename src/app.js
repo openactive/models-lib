@@ -38,7 +38,6 @@ program
     }
 
     let extensions = {
-      ...require("./extensions/_hacks"),
       ...require("./extensions/_extensions")
     };
 
