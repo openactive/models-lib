@@ -29,3 +29,17 @@ Generate language files:
 ```
 npm run app-dev -- generate <language> --destination <folder>
 ```
+
+### Specific examples
+
+PHP:
+
+```jsx
+npm run app-dev -- generate PHP --destination ../../PHP/models-php/src/
+```
+
+Ruby:
+
+```jsx
+npm run app-dev -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
+```
