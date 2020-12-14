@@ -6,8 +6,8 @@ const DATA_MODEL_DOCS_URL_PREFIX =
 
 class Ruby extends Generator {
   mutateExtensions(extensions) {
+    this.generateSchemaOrgModel = true;
     return {
-      ...require("../../extensions/_schema.json"),
       ...extensions
     };
   }

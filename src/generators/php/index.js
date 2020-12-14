@@ -5,9 +5,10 @@ const DATA_MODEL_DOCS_URL_PREFIX =
   "https://developer.openactive.io/data-model/types/";
 
 class PHP extends Generator {
+
   mutateExtensions(extensions) {
+    this.generateSchemaOrgModel = true;
     return {
-      ...require("../../extensions/_schema.json"),
       ...extensions
     };
   }
@@ -149,8 +150,9 @@ class PHP extends Generator {
       case "Integer":
         return "int";
       case "Float":
-      case "Number":
         return "float";
+      case "Number":
+        return "Number";
       case "Property":
       case "Text":
       case "URL":

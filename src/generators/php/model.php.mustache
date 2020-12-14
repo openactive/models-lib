@@ -68,11 +68,11 @@ class {{{className}}} extends {{{ inherits }}}
      */
     public function set{{{pascalCasePropName}}}(${{{propName}}})
     {
-        $types = array(
+        $types = [
 {{# propertyTypes }}
             "{{{ . }}}",
 {{/propertyTypes }}
-        );
+        ];
 
         ${{{propName}}} = self::checkTypes(${{{propName}}}, $types);
 

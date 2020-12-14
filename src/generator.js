@@ -1,4 +1,4 @@
-import { getEnums, getMetaData, getModels } from "@openactive/data-models";
+import { getEnums, getMetaData, getModels, getSchemaOrgVocab } from "@openactive/data-models";
 import { constants as fsConstants, promises as fs } from "fs";
 import fsExtra from "fs-extra";
 import path from "path";
@@ -18,6 +18,7 @@ class Generator {
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
     this.generatedFiles = [];
+    this.generateSchemaOrgModel = false;
 
     jsonld.documentLoader = this.customLoader.bind(this);
   }
@@ -307,18 +308,28 @@ class Generator {
       }
 
       let promise = this.getExtension(extensions[prefix].url).then(
-        extension => {
-          if (!extension) throw "Error loading extension: " + prefix;
+          extension => {
+            if (!extension) throw "Error loading extension: " + prefix;
 
-          console.log("loaded ", prefix);
+            console.log("loaded ", prefix);
 
-          extensions[prefix].spec = extension;
-        }
+            extensions[prefix].spec = extension;
+          }
       );
 
       promises.push(promise);
     }
     await Promise.all(promises);
+
+    // Load in the Schema Org model if required
+    if (this.generateSchemaOrgModel) {
+      extensions.schema = {
+        heading: "Schema.org Extensions context",
+        description: "Schema.org Extensions context",
+        spec: getSchemaOrgVocab()['schema'],
+        preferOA: false,
+      }
+    }
 
     // Add all extensions and namespaces first, in case they reference each other
     for (let prefix of Object.keys(extensions)) {
@@ -692,6 +703,10 @@ class Generator {
     for (let typeName of Object.keys(this.models)) {
       let model = this.models[typeName];
       let extension = this.extensions[model.extension];
+
+      if (!extension) {
+        extension = this.extensions.schema;
+      }
 
       if (!model.rawSubClasses) continue;
 
