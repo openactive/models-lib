@@ -7,9 +7,12 @@ const DATA_MODEL_DOCS_URL_PREFIX =
 class PHP extends Generator {
   mutateExtensions(extensions) {
     return {
-      ...require("../../extensions/_schema.json"),
       ...extensions
     };
+  }
+
+  get generateSchemaOrgModel () {
+    return true;
   }
 
   // using inplace of standard namespace

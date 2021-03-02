@@ -197,3 +197,9 @@ ServiceFabricBackup/
 
 # Local History for Visual Studio
 .localhistory/
+
+# Cached JSON files
+all.json
+enums.json
+models.json
+namespaces.json
