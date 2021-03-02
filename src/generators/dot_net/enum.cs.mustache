@@ -1,4 +1,6 @@
+
 using System.Runtime.Serialization;
+
 namespace OpenActive.NET
 {
     /// <summary>
@@ -6,8 +8,9 @@ namespace OpenActive.NET
     /// {{{ . }}}
 {{/enumDoc}}
     /// </summary>
-    public enum {{{ typeName }}}
+    public enum  {{{ typeName }}}
     {
+
 {{#each values}}
         [EnumMember(Value = "{{{ memberVal }}}")]
         {{{ value }}}{{#unless @last}},{{/unless}}

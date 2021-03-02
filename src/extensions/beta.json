@@ -1,8 +1,20 @@
 {
   "beta": {
-    "url": "https://www.openactive.io/ns-beta/beta.jsonld",
+    "url": "https://openactive.io/ns-beta/beta.jsonld",
     "heading": "OpenActive Beta Extension properties",
     "description": "These properties are defined in the [OpenActive Beta Extension](https://openactive.io/ns-beta). The OpenActive Beta Extension is defined as a convenience to help document properties that are in active testing and review by the community. Publishers should not assume that properties in the beta namespace will either be added to the core specification or be included in the namespace over the long term.",
+    "propertyWarning": "[NOTICE: This is a beta property, and is highly likely to change in future versions of this library.]",
+    "enumWarning": "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]",
+    "classWarning": "[NOTICE: This is a beta class, and is highly likely to change in future versions of this library.]",
+    "preferOA": true
+  },
+  "test": {
+    "url": "https://openactive.io/test-interface/test-interface.jsonld",
+    "heading": "Open Booking API Test Interface",
+    "description": "These properties are defined in the [Open Booking API Test Interface](https://openactive.io/test-interface). This interface is defined as a convenience to aid testing of the Open Booking API. Booking Systems MUST NOT expose this interface in production environments.",
+    "propertyWarning": "[NOTICE: This property is part of the Open Booking API Test Interface, and MUST NOT be used in production.]",
+    "enumWarning": "[NOTICE: This enumeration is part of the Open Booking API Test Interface, and MUST NOT be used in production.]",
+    "classWarning": "[NOTICE: This class is part of the Open Booking API Test Interface, and MUST NOT be used in production.]",
     "preferOA": true
   }
 }

@@ -273,13 +273,14 @@ class PHP extends Generator {
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
       propertyType: propertyType,
-      propertyTypes: propertyTypes
+      propertyTypes: propertyTypes,
+      deprecationGuidance: field.deprecationGuidance
     };
 
-    if (field.obsolete) {
+    if (field.disinherit) {
       return {
         ...obj,
-        isObsolete: true
+        isDisinherited: true
       };
     } else {
       let methodType = "";

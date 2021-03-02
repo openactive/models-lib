@@ -355,7 +355,7 @@ class Ruby extends Generator {
       propertyTypes: propertyTypes
     };
 
-    if (field.obsolete) {
+    if (field.disinherit) {
       return {
         ...obj
       };
