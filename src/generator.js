@@ -1,4 +1,4 @@
-import { getEnums, getMetaData, getModels } from "@openactive/data-models";
+import { getEnums, getMetaData, getModels, getSchemaOrgVocab } from "@openactive/data-models";
 import { constants as fsConstants, promises as fs } from "fs";
 import fsExtra from "fs-extra";
 import path from "path";
@@ -40,6 +40,10 @@ class Generator {
 
   mutateExtensions(extensions) {
     return extensions;
+  }
+
+  get generateSchemaOrgModel () {
+    return false;
   }
 
   async dumpStructures() {
@@ -307,18 +311,29 @@ class Generator {
       }
 
       let promise = this.getExtension(extensions[prefix].url).then(
-        extension => {
-          if (!extension) throw "Error loading extension: " + prefix;
+          extension => {
+            if (!extension) throw "Error loading extension: " + prefix;
 
-          console.log("loaded ", prefix);
+            console.log("loaded ", prefix);
 
-          extensions[prefix].spec = extension;
-        }
+            extensions[prefix].spec = extension;
+          }
       );
 
       promises.push(promise);
     }
     await Promise.all(promises);
+
+    // Load in the Schema Org model if required
+    if (this.generateSchemaOrgModel) {
+      extensions.schema = {
+        prefix: "schema",
+        heading: "Schema.org",
+        description: "Schema.org",
+        spec: getSchemaOrgVocab(),
+        preferOA: false,
+      }
+    }
 
     // Add all extensions and namespaces first, in case they reference each other
     for (let prefix of Object.keys(extensions)) {
