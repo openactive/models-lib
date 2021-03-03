@@ -1,4 +1,3 @@
-
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -48,7 +47,6 @@ namespace OpenActive.NET
         public override string Type => "{{{modelType}}}";
 {{#fieldList}}
 
-
     {{#if description }}
         /// <summary>
         {{#each description}}
@@ -70,6 +68,5 @@ namespace OpenActive.NET
         {{{ . }}}
     {{/property }}
 {{/fieldList}}
-
     }
 }
