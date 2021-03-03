@@ -1,27 +1,18 @@
-import Generator from "../../generator";
-import Handlebars from "handlebars";
-import fs from "fs";
-
-const DATA_MODEL_DOCS_URL_PREFIX =
-  "https://developer.openactive.io/data-model/types/";
+const Generator = require('../../generator');
 
 class DotNet extends Generator {
-  renderModel(data) {
+  async renderModel(data) {
     this.modelTemplate =
       this.modelTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8")
-      );
+      (await this.loadTemplate(__dirname + "/model.cs.mustache"));
 
     return this.modelTemplate(data);
   }
 
-  renderEnum(data) {
+  async renderEnum(data) {
     this.enumTemplate =
       this.enumTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8")
-      );
+      (await this.loadTemplate(__dirname + "/enum.cs.mustache"));
 
     return this.enumTemplate(data);
   }
@@ -75,7 +66,7 @@ class DotNet extends Generator {
       case "Time":
         return "DateTimeOffset?";
       case "Integer":
-        return "int?";
+        return "long?";
       case "Float":
         return "decimal?";
       case "Number":
@@ -90,16 +81,14 @@ class DotNet extends Generator {
         return "Uri";
       default:
         if (enumMap[compactedTypeName]) {
-          if (this.includedInSchema(enumMap[compactedTypeName].namespace)) {
+          if (this.includedInSchema(compactedTypeName) && !enumMap[compactedTypeName].isSchemaPending) {
             return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
           } else {
             return this.convertToCamelCase(typeName) + "?";
           }
-        } else if (modelsMap[typeName]) {
+        } else if (modelsMap[typeName] || modelsMap[compactedTypeName]) {
           return this.convertToCamelCase(typeName);
-        } else if (this.includedInSchema(compactedTypeName)) {
-          return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
-        } else if (isExtension) {
+        } else if (isExtension && this.includedInSchema(compactedTypeName)) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
           return "Schema.NET." + this.convertToCamelCase(typeName);
@@ -126,7 +115,8 @@ class DotNet extends Generator {
       let isNumber =
         requiredType &&
         (requiredType.indexOf("Integer") > -1 ||
-          requiredType.indexOf("Float") > -1);
+          requiredType.indexOf("Float") > -1 ||
+          requiredType.indexOf("Number") > -1);
       return (
         "<code>\n" +
         (fieldName ? `"` + fieldName + `": ` : "") +
@@ -141,10 +131,14 @@ class DotNet extends Generator {
       return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
     } else if (field.requiredType == "https://schema.org/Time") {
       return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
-    } else if (propertyType.indexOf("Values<") > -1) {
+    } else if (propertyType == 'DateTimeOffset?') {
+      return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601DateTimeValuesConverter))]`;
+    } else if (propertyType.indexOf("Values<") > -1 || field.requiredType || field.model || field.alternativeModels) {
       return `[JsonConverter(typeof(ValuesConverter))]`;
     } else {
-      return "";
+      //return "";
+      // TODO: This could be switched back to empty string, with a thorough analysis of where ValuesConverter is actually required
+      return `[JsonConverter(typeof(ValuesConverter))]`;
     }
   }
 
@@ -161,19 +155,19 @@ class DotNet extends Generator {
     );
     let jsonConverter = this.renderJsonConverter(field, propertyType);
 
-    if (field.obsolete) {
+    if (field.disinherit) {
       return {
-        description: this.createDescription(field),
-        codeExample: this.createCodeExample(field),
         decorators: [
           `[Obsolete("This property is disinherited in this type, and must not be used.", true)]`
         ],
         property: `public override ${propertyType} ${propertyName} { get; set; }`
       };
     } else {
-      let methodType = "";
-      if (!isExtension && hasBaseClass && (isNew || field.override)) {
-        methodType = "new ";
+      let methodType = "virtual";
+      if (field.override) {
+        methodType = "override";
+      } else if (!isExtension && hasBaseClass && (isNew || field.override)) {
+        methodType = "new virtual";
       }
 
       let order = field.order;
@@ -181,14 +175,22 @@ class DotNet extends Generator {
         order += 1000;
       }
 
+      // TODO add to Ruby
+      let deprecate = field.deprecationGuidance ? `[Obsolete("${field.deprecationGuidance}", false)]` : null;
+      // TODO add to PHP and Ruby
+      let defaultContent = field.defaultContent ?
+        (Number.isInteger(field.defaultContent) ? ` = ${field.defaultContent};` : ` = "${field.defaultContent.replace(/"/g, '\\"')}";`)
+        : "";
+
       return {
         codeExample: this.createCodeExample(field),
         description: this.createDescription(field),
         decorators: [
           `[DataMember(Name = "${memberName}", EmitDefaultValue = false, Order = ${order})]`,
-          jsonConverter
+          jsonConverter,
+          deprecate
         ].filter(val => val),
-        property: `public ${methodType}virtual ${propertyType} ${propertyName} { get; set; } `
+        property: `public ${methodType} ${propertyType} ${propertyName} { get; set; }${defaultContent}`
       };
     }
   }
@@ -209,6 +211,11 @@ class DotNet extends Generator {
       throw new Error("No type found for field: " + field.fieldName);
     }
 
+    // Use ILegalEntity in place of SingleValues<Organization, Person>
+    if (types.length == 2 && types.includes('Organization') && types.includes('Person')) {
+      return `ILegalEntity`;
+    }
+
     // OpenActive SingleValues not allow many of the same type, only allows one
     return types.length > 1 ? `SingleValues<${types.join(", ")}>` : types[0];
   }
@@ -224,7 +231,9 @@ class DotNet extends Generator {
       } else {
         return `${subClassOfName}`;
       }
-    } else if (derivedFrom) {
+    }
+    
+    if (derivedFrom) {
       let derivedFromName = this.convertToCamelCase(
         this.getPropNameFromFQP(derivedFrom)
       );
@@ -234,11 +243,11 @@ class DotNet extends Generator {
         // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
         return `Schema.NET.JsonLdObject`;
       }
-    } else {
-      // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-      throw new Error("No base class specified for: " + model.type);
     }
+
+    // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
+    return `Schema.NET.JsonLdObject`;
   }
 }
 
-export default DotNet;
+module.exports = DotNet;

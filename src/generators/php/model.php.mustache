@@ -39,8 +39,11 @@ class {{{className}}} extends {{{ inherits }}}
 {{/codeExample }}
      *
      * @var {{{propertyType}}}
-{{#if isObsolete}}
+{{#if isDisinherited}}
      * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
+{{#if deprecationGuidance}}
+     * @deprecated {{{deprecationGuidance}}}
 {{/if}}
      */
     protected ${{{propName}}};
@@ -49,8 +52,11 @@ class {{{className}}} extends {{{ inherits }}}
 {{#fieldList}}
     /**
      * @return {{{propertyType}}}
-{{#if isObsolete}}
+{{#if isDisinherited}}
      * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
+{{#if deprecationGuidance}}
+     * @deprecated {{{deprecationGuidance}}}
 {{/if}}
      */
     public function get{{{pascalCasePropName}}}()
@@ -62,8 +68,11 @@ class {{{className}}} extends {{{ inherits }}}
      * @param {{{propertyType}}} ${{{propName}}}
      * @return void
      * @throws \OpenActive\Exceptions\InvalidArgumentException If the provided argument is not of a supported type.
-{{#if isObsolete}}
+{{#if isDisinherited}}
      * @deprecated This property is disinherited in this type, and must not be used.
+{{/if}}
+{{#if deprecationGuidance}}
+     * @deprecated {{{deprecationGuidance}}}
 {{/if}}
      */
     public function set{{{pascalCasePropName}}}(${{{propName}}})

@@ -1,11 +1,11 @@
-import { getEnums, getMetaData, getModels, getSchemaOrgVocab } from "@openactive/data-models";
-import { constants as fsConstants, promises as fs } from "fs";
-import fsExtra from "fs-extra";
-import path from "path";
-import isobject from "isobject";
-import jsonld from "jsonld";
-import Handlebars from "handlebars";
-import axios from "axios";
+const { getEnums, getMetaData, getModels, getSchemaOrgVocab } = require('@openactive/data-models');
+const { constants : fsConstants, promises : fs } = require('fs');
+const fsExtra = require('fs-extra');
+const path = require('path');
+const isobject = require('isobject');
+const jsonld = require('jsonld');
+const Handlebars = require('handlebars');
+const axios = require('axios');
 
 class Generator {
   constructor(dataModelDirectory, extensions) {
@@ -126,7 +126,7 @@ class Generator {
       let thisEnum = this.enumMap[typeName];
 
       // filter off schema enums for langs that don't need it
-      if (!this.extensions["schema"] && this.includedInSchema(typeName))
+      if ((!this.extensions["schema"] && this.includedInSchema(typeName)) && !thisEnum.isSchemaPending)
         continue;
 
       let pageContent = await this.createEnumFile(typeName, thisEnum);
@@ -391,7 +391,7 @@ class Generator {
   createModelData(model, extensions) {
     console.log("Generating model ", model.type);
 
-    let fullFields = this.obsoleteNotInSpecFields(model, this.models);
+    let fullFields = this.disinheritNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields)
       .sort(this.compareFields)
       .map((field, index) => {
@@ -476,15 +476,8 @@ class Generator {
       return (
         description.sections
           .map(section =>
-            section.title && section.paragraphs
-              ? `
-## **` +
-                section.title +
-                `**
-` +
-                section.paragraphs.join("\n")
-              : ""
-          )
+            section.title && section.paragraphs ? `
+` + section.title + `: ` + section.paragraphs.join(" ") : "")
           .join("\n\n") + "\n"
       );
     } else {
@@ -504,9 +497,10 @@ class Generator {
           )
       );
     } else {
+      const deprecationNotice = field.deprecationGuidance ? `[DEPRECATED: ${field.deprecationGuidance}]` : null;
+      const propertyWarning = this.extensions[field.extensionPrefix] && this.extensions[field.extensionPrefix].propertyWarning;
       lines = [
-        field.extensionPrefix == "beta" &&
-          "[NOTICE: This is a beta field, and is highly likely to change in future versions of this library.]",
+        deprecationNotice || propertyWarning,
         ...field.description
       ];
 
@@ -610,6 +604,9 @@ class Generator {
           ],
           example: node.example,
           extensionPrefix: extensionPrefix,
+          ...{ 
+            deprecationGuidance: extension.prefix === 'beta' && node.supersededBy ? `This term has graduated from the beta namespace and is highly likely to be removed in future versions of this library, please use \`${this.getPropNameFromFQP(node.supersededBy)}\` instead.` : undefined
+          },
           raw: node
         };
 
@@ -630,7 +627,7 @@ class Generator {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
             model.extensionFields.push(field.fieldName);
-            model.fields[field.fieldName] = field;
+            model.fields[field.fieldName] = { ...field };
           } else {
             let isSchema = /^schema:/.test(prop);
             let msg =
@@ -747,14 +744,15 @@ class Generator {
       tree = tree.filter(path => {
         if (path.includes("schema:Enumeration")) return false;
         let modelName = path[1];
-        if (!this.models[modelName]) return false;
+        if (this.extensions["schema"] && !this.models[modelName]) return false;
 
         return true;
       });
 
       if (tree.length > 0) {
         //todo: better path picking, eventually multi-inheritance
-        model.subClassOf = tree[0][1];
+        let subClassOf = tree[0][1];
+        model.subClassOf = subClassOf.indexOf(':') === -1 ? `#${subClassOf}` : subClassOf;
       }
     }
   }
@@ -811,6 +809,23 @@ class Generator {
     }
   }
 
+  getBaseSchemaClass(model) {
+    if (typeof model.derivedFrom !== 'undefined') {
+      return model.derivedFrom;
+    } else if (typeof model.subClassOf !== 'undefined') {
+      if (this.getPrefix(model.subClassOf) === 'schema') {
+        return model.subClassOf.replace('schema:', 'https://schema.org/');
+      } else {
+        const parentModel = this.getParentModel(model);
+        if (parentModel) {
+            return this.getBaseSchemaClass(parentModel);
+        }
+      }
+    }
+
+    return null;
+  }
+
   getPropertyWithInheritance(prop, model) {
     if (model[prop]) return model[prop];
 
@@ -834,7 +849,7 @@ class Generator {
     }
   }
 
-  obsoleteNotInSpecFields(model) {
+  disinheritNotInSpecFields(model) {
     let augFields = { ...model.fields };
 
     let parentModel = this.getParentModel(model);
@@ -847,10 +862,10 @@ class Generator {
           ) {
             // Cannot have property with same name as type, so do not disinherit here
             augFields[field] = { ...parentModel.fields[field] };
-            augFields[field].obsolete = true;
+            augFields[field].disinherit = true;
           }
         } else {
-          return;
+          // return; // If this error gets thrown, it was previously being skipped, so put this line back in
           throw new Error(
             'notInSpec field "' +
               field +
@@ -874,7 +889,14 @@ class Generator {
       }
 
       if (parentModel && parentModel.fields && parentModel.fields[field]) {
-        thisField.override = true;
+        var parentField = parentModel.fields[field];
+        if (parentField.model == thisField.model 
+            && parentField.requiredType == thisField.requiredType
+            && JSON.stringify(parentField.alternativeModels) == JSON.stringify(thisField.alternativeModels)
+            && JSON.stringify(parentField.alternativeTypes) == JSON.stringify(thisField.alternativeTypes))
+        {
+            thisField.override = true;
+        }
       }
     });
 
@@ -1022,42 +1044,35 @@ class Generator {
   }
 
   createModelDoc(model) {
-    let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model);
-    let derivedFromName = this.convertToCamelCase(
-      this.getPropNameFromFQP(derivedFrom)
-    );
-
     let docLines = [
-      this.getPropNameFromFQP(model.type) !== model.type &&
-        !model.type.startsWith("schema:") &&
-        `[NOTICE: This is a beta class, and is highly likely to change in future versions of this library.].`,
+      this.extensions[model.extension] && this.extensions[model.extension].classWarning,
       this.createCommentFromDescription(model.description)
     ];
 
-    if (derivedFrom) {
-      let text = `This type is derived from [${derivedFromName}](${derivedFrom})`;
+    if (model.extension !== 'schema') {
+      // baseSchemaClass is only used here for information
+      var baseSchemaClass = this.getBaseSchemaClass(model);
+      if (baseSchemaClass) {
+        let text = `This type is derived from ${baseSchemaClass}`;
 
-      if (derivedFrom.indexOf("schema.org")) {
-        text +=
-          ", which means that any of this type's properties within schema.org may also be used. Note however the properties on this page must be used in preference if a relevant property is available";
+        if (baseSchemaClass.match(/^https:\/\/schema.org/)) {
+          text +=
+            ", which means that any of this type's properties within schema.org may also be used";
+        }
+
+        text += ".";
+
+        docLines.push(text);
       }
-
-      text += ".";
-
-      docLines.push(text);
     }
 
     return this.cleanDocLines(docLines);
   }
 
   createEnumDoc(typeName, thisEnum) {
-    let docLines = [];
-
-    if (thisEnum.extensionPrefix == "beta") {
-      docLines.push(
-        "[NOTICE: This is a beta enumeration, and is highly likely to change in future versions of this library.]"
-      );
-    }
+    let docLines = [
+      this.extensions[thisEnum.extensionPrefix] && this.extensions[thisEnum.extensionPrefix].enumWarning
+    ];
 
     if (thisEnum.comment) {
       docLines.push(thisEnum.comment);
@@ -1209,4 +1224,4 @@ class Generator {
   }
 }
 
-export default Generator;
+module.exports = Generator;
