@@ -16,7 +16,6 @@
   "dependencies": {
     "@openactive/data-models": "^2.0.182",
     "axios": "^0.21.1",
-    "babel-preset-env": "^1.7.0",
     "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
     "handlebars": "^4.5.3",
