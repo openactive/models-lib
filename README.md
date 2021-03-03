@@ -47,6 +47,6 @@ npm start -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
 .NET:
 
 ```jsx
-npm start -- generate .NET --destination ../OpenActive.NET/lib/openactive/
+npm start -- generate .NET --destination ../OpenActive.NET/OpenActive.NET/
 ```
 
