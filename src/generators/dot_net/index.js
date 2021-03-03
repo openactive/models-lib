@@ -1,27 +1,18 @@
-import Generator from "../../generator";
-import Handlebars from "handlebars";
-import fs from "fs";
-
-const DATA_MODEL_DOCS_URL_PREFIX =
-  "https://developer.openactive.io/data-model/types/";
+const Generator = require('../../generator');
 
 class DotNet extends Generator {
-  renderModel(data) {
+  async renderModel(data) {
     this.modelTemplate =
       this.modelTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/model.cs.mustache", "utf8")
-      );
+      (await this.loadTemplate(__dirname + "/model.cs.mustache"));
 
     return this.modelTemplate(data);
   }
 
-  renderEnum(data) {
+  async renderEnum(data) {
     this.enumTemplate =
       this.enumTemplate ||
-      Handlebars.compile(
-        fs.readFileSync(__dirname + "/enum.cs.mustache", "utf8")
-      );
+      (await this.loadTemplate(__dirname + "/enum.cs.mustache"));
 
     return this.enumTemplate(data);
   }
@@ -90,16 +81,14 @@ class DotNet extends Generator {
         return "Uri";
       default:
         if (enumMap[compactedTypeName]) {
-          if (this.includedInSchema(enumMap[compactedTypeName].namespace) && !enumMap[typeName].isSchemaPending) {
+          if (this.includedInSchema(compactedTypeName) && !enumMap[compactedTypeName].isSchemaPending) {
             return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
           } else {
             return this.convertToCamelCase(typeName) + "?";
           }
-        } else if (modelsMap[typeName]) {
+        } else if (modelsMap[typeName] || modelsMap[compactedTypeName]) {
           return this.convertToCamelCase(typeName);
-        } else if (this.includedInSchema(compactedTypeName)) {
-          return "Schema.NET." + this.convertToCamelCase(typeName) + "?";
-        } else if (isExtension) {
+        } else if (isExtension && this.includedInSchema(compactedTypeName)) {
           // Extensions may reference schema.org, for which we have no reference here to confirm
           console.log("Extension referenced schema.org property: " + typeName);
           return "Schema.NET." + this.convertToCamelCase(typeName);
@@ -261,4 +250,4 @@ class DotNet extends Generator {
   }
 }
 
-export default DotNet;
+module.exports = DotNet;

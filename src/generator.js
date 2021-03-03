@@ -1,11 +1,11 @@
-import { getEnums, getMetaData, getModels, getSchemaOrgVocab } from "@openactive/data-models";
-import { constants as fsConstants, promises as fs } from "fs";
-import fsExtra from "fs-extra";
-import path from "path";
-import isobject from "isobject";
-import jsonld from "jsonld";
-import Handlebars from "handlebars";
-import axios from "axios";
+const { getEnums, getMetaData, getModels, getSchemaOrgVocab } = require('@openactive/data-models');
+const { constants : fsConstants, promises : fs } = require('fs');
+const fsExtra = require('fs-extra');
+const path = require('path');
+const isobject = require('isobject');
+const jsonld = require('jsonld');
+const Handlebars = require('handlebars');
+const axios = require('axios');
 
 class Generator {
   constructor(dataModelDirectory, extensions) {
@@ -604,7 +604,7 @@ class Generator {
           ],
           example: node.example,
           extensionPrefix: extensionPrefix,
-          deprecationGuidance: node.supersededBy ? `This term has graduated from the beta namespace and is highly likely to be removed in future versions of this library, please use \`${getPropNameFromFQP(node.supersededBy)}\` instead.` : null,
+          ...{ deprecationGuidance: node.supersededBy ? `This term has graduated from the beta namespace and is highly likely to be removed in future versions of this library, please use \`${this.getPropNameFromFQP(node.supersededBy)}\` instead.` : undefined },
           raw: node
         };
 
@@ -742,14 +742,15 @@ class Generator {
       tree = tree.filter(path => {
         if (path.includes("schema:Enumeration")) return false;
         let modelName = path[1];
-        if (!this.models[modelName]) return false;
+        if (this.extensions["schema"] && !this.models[modelName]) return false;
 
         return true;
       });
 
       if (tree.length > 0) {
         //todo: better path picking, eventually multi-inheritance
-        model.subClassOf = tree[0][1];
+        let subClassOf = tree[0][1];
+        model.subClassOf = subClassOf.indexOf(':') === -1 ? `#${subClassOf}` : subClassOf;
       }
     }
   }
@@ -808,16 +809,16 @@ class Generator {
 
   getBaseSchemaClass(model) {
     if (typeof model.derivedFrom !== 'undefined') {
-        return model.derivedFrom;
+      return model.derivedFrom;
     } else if (typeof model.subClassOf !== 'undefined') {
-        if (model.subClassOf.match(/^#[A-Za-z]+$/)) {
-            const parentModel = this.getParentModel(model);
-            if (parentModel) {
-                return this.getBaseSchemaClass(parentModel);
-            }
-        } else {
-            return model.subClassOf;
+      if (this.getPrefix(model.subClassOf) === 'schema') {
+        return model.subClassOf.replace('schema:', 'https://schema.org/');
+      } else {
+        const parentModel = this.getParentModel(model);
+        if (parentModel) {
+            return this.getBaseSchemaClass(parentModel);
         }
+      }
     }
 
     return null;
@@ -1220,4 +1221,4 @@ class Generator {
   }
 }
 
-export default Generator;
+module.exports = Generator;

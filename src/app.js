@@ -1,6 +1,6 @@
-import DotNet from "./generators/dot_net";
-import PHP from "./generators/php";
-import Ruby from "./generators/ruby";
+const DotNet = require('./generators/dot_net');
+const PHP = require('./generators/php');
+const Ruby = require('./generators/ruby');
 
 let generators = {
   ".NET": DotNet,

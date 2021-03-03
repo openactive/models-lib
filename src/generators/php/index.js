@@ -1,8 +1,5 @@
-import Generator from "../../generator";
-import Handlebars from "handlebars";
-
-const DATA_MODEL_DOCS_URL_PREFIX =
-  "https://developer.openactive.io/data-model/types/";
+const Generator = require('../../generator');
+const Handlebars = require('handlebars');
 
 class PHP extends Generator {
   mutateExtensions(extensions) {
@@ -428,4 +425,4 @@ class PHP extends Generator {
   }
 }
 
-export default PHP;
+module.exports = PHP;

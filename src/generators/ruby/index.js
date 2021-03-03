@@ -1,8 +1,5 @@
-import Generator from "../../generator";
-import Handlebars from "handlebars";
-
-const DATA_MODEL_DOCS_URL_PREFIX =
-  "https://developer.openactive.io/data-model/types/";
+const Generator = require('../../generator');
+const Handlebars = require('handlebars');
 
 class Ruby extends Generator {
   mutateExtensions(extensions) {
@@ -489,4 +486,4 @@ class Ruby extends Generator {
   }
 }
 
-export default Ruby;
+module.exports = Ruby;

@@ -5,10 +5,8 @@
   "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "babel-node": "babel-node",
-    "app-dev": "babel-node src/app.js",
-    "app": "node dist/app.js",
-    "build": "babel src --out-dir dist",
+    "start": "node src/app.js",
+    "debug": "node --inspect-brk src/app.js",
     "prettier": "prettier --check \"src/**/*.js\" \"src/**/*.json\"",
     "prettier:write": "prettier --write \"src/**/*.js\" \"src/**/*.json\""
   },
@@ -16,9 +14,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@babel/node": "^7.6.2",
-    "@babel/polyfill": "^7.6.0",
-    "@openactive/data-models": "^2.0.181",
+    "@openactive/data-models": "^2.0.182",
     "axios": "^0.21.1",
     "babel-preset-env": "^1.7.0",
     "commander": "^3.0.2",
@@ -28,9 +24,6 @@
     "jsonld": "^1.8.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.6.2",
-    "@babel/core": "^7.6.2",
-    "@babel/preset-env": "^7.6.2",
     "prettier": "^1.18.2"
   },
   "engines": {
