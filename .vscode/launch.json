@@ -7,13 +7,25 @@
     {
       "type": "pwa-node",
       "request": "launch",
-      "name": "Launch Program",
+      "name": "Generate .NET",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "program": "src/app.js",
       "args": [
         "generate", ".NET", "--destination", "../OpenActive.NET/OpenActive.NET/"
+      ]
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Generate PHP",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "src/app.js",
+      "args": [
+        "generate", "PHP", "--destination", "../models-php/src/"
       ]
     }
   ]

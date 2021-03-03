@@ -604,7 +604,9 @@ class Generator {
           ],
           example: node.example,
           extensionPrefix: extensionPrefix,
-          ...{ deprecationGuidance: node.supersededBy ? `This term has graduated from the beta namespace and is highly likely to be removed in future versions of this library, please use \`${this.getPropNameFromFQP(node.supersededBy)}\` instead.` : undefined },
+          ...{ 
+            deprecationGuidance: extension.prefix === 'beta' && node.supersededBy ? `This term has graduated from the beta namespace and is highly likely to be removed in future versions of this library, please use \`${this.getPropNameFromFQP(node.supersededBy)}\` instead.` : undefined
+          },
           raw: node
         };
 
@@ -1042,25 +1044,26 @@ class Generator {
   }
 
   createModelDoc(model) {
-    // baseSchemaClass is only used here for information
-    var baseSchemaClass = this.getBaseSchemaClass(model);
-
     let docLines = [
       this.extensions[model.extension] && this.extensions[model.extension].classWarning,
       this.createCommentFromDescription(model.description)
     ];
 
-    if (baseSchemaClass) {
-      let text = `This type is derived from ${baseSchemaClass}`;
+    if (model.extension !== 'schema') {
+      // baseSchemaClass is only used here for information
+      var baseSchemaClass = this.getBaseSchemaClass(model);
+      if (baseSchemaClass) {
+        let text = `This type is derived from ${baseSchemaClass}`;
 
-      if (baseSchemaClass.match(/^https:\/\/schema.org/)) {
-        text +=
-          ", which means that any of this type's properties within schema.org may also be used";
+        if (baseSchemaClass.match(/^https:\/\/schema.org/)) {
+          text +=
+            ", which means that any of this type's properties within schema.org may also be used";
+        }
+
+        text += ".";
+
+        docLines.push(text);
       }
-
-      text += ".";
-
-      docLines.push(text);
     }
 
     return this.cleanDocLines(docLines);
