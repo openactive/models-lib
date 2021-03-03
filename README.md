@@ -21,12 +21,12 @@ npm install
 ## Usage
 
 List languages available:
-```
+```bash
 npm start -- list
 ```
 
 Generate language files:
-```
+```bash
 npm start -- generate <language> --destination <folder>
 ```
 
@@ -34,19 +34,19 @@ npm start -- generate <language> --destination <folder>
 
 PHP:
 
-```jsx
+```bash
 npm start -- generate PHP --destination ../models-php/src/
 ```
 
 Ruby:
 
-```jsx
+```bash
 npm start -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
 ```
 
 .NET:
 
-```jsx
+```bash
 npm start -- generate .NET --destination ../OpenActive.NET/OpenActive.NET/
 ```
 
