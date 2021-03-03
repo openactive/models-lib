@@ -1,0 +1,35 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  generate:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        language: ['.NET', 'PHP', 'Ruby']
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: models-lib
+    
+    - name: Use Node.js 14.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+  
+    - run: npm install
+      working-directory: models-lib
+    
+    - name: Generate ${{ matrix.language }} models
+      run: npm start -- generate ${{ matrix.language }} --destination ../output/
+      working-directory: models-lib
+
