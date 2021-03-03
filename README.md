@@ -41,7 +41,7 @@ npm start -- generate PHP --destination ../models-php/src/
 Ruby:
 
 ```bash
-npm start -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
+npm start -- generate Ruby --destination ../models-ruby/lib/openactive/
 ```
 
 .NET:
