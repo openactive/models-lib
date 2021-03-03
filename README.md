@@ -22,12 +22,12 @@ npm install
 
 List languages available:
 ```
-npm run app-dev -- list
+npm start -- list
 ```
 
 Generate language files:
 ```
-npm run app-dev -- generate <language> --destination <folder>
+npm start -- generate <language> --destination <folder>
 ```
 
 ### Specific examples
@@ -35,11 +35,18 @@ npm run app-dev -- generate <language> --destination <folder>
 PHP:
 
 ```jsx
-npm run app-dev -- generate PHP --destination ../../PHP/models-php/src/
+npm start -- generate PHP --destination ../models-php/src/
 ```
 
 Ruby:
 
 ```jsx
-npm run app-dev -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
+npm start -- generate Ruby --destination ../Ruby_Spike/lib/openactive/
 ```
+
+.NET:
+
+```jsx
+npm start -- generate .NET --destination ../OpenActive.NET/lib/openactive/
+```
+
