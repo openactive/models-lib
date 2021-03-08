@@ -213,7 +213,14 @@ class DotNet extends Generator {
 
     // Use ILegalEntity in place of SingleValues<Organization, Person>
     if (types.length == 2 && types.includes('Organization') && types.includes('Person')) {
-      return `ILegalEntity`;
+      return field.allowReferencing ? `ReferenceValue<ILegalEntity>` : `ILegalEntity`;
+    }
+
+    if (field.allowReferencing) {
+      if (types.length > 1) {
+        throw new Error("Multiple types with allowReferencing enabled not supported: " + field.fieldName); 
+      }
+      return `ReferenceValue<${types[0]}>`;
     }
 
     // OpenActive SingleValues not allow many of the same type, only allows one

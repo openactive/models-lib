@@ -375,6 +375,7 @@ class Ruby extends Generator {
       .concat(field.requiredType)
       .concat(field.alternativeModels)
       .concat(field.model)
+      .concat(field.allowReferencing ? ['https://schema.org/URL'] : [])
       .filter(type => type !== undefined);
 
     // Add nullable types
@@ -412,6 +413,7 @@ class Ruby extends Generator {
       .concat(field.requiredType)
       .concat(field.alternativeModels)
       .concat(field.model)
+      .concat(field.allowReferencing ? ['https://schema.org/URL'] : [])
       .filter(type => type !== undefined);
 
     // Add nullable types
