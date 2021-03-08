@@ -196,6 +196,10 @@ class DotNet extends Generator {
   }
 
   createTypeString(field, models, enumMap, isExtension) {
+    if (field.valueConstraint === 'UUID') {
+      return `Guid?`
+    }
+
     let types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)

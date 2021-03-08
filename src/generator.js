@@ -893,7 +893,9 @@ class Generator {
         if (parentField.model == thisField.model 
             && parentField.requiredType == thisField.requiredType
             && JSON.stringify(parentField.alternativeModels) == JSON.stringify(thisField.alternativeModels)
-            && JSON.stringify(parentField.alternativeTypes) == JSON.stringify(thisField.alternativeTypes))
+            && JSON.stringify(parentField.alternativeTypes) == JSON.stringify(thisField.alternativeTypes)
+            && parentField.allowReferencing == parentField.allowReferencing
+            && parentField.valueConstraint == parentField.valueConstraint)
         {
             thisField.override = true;
         }
