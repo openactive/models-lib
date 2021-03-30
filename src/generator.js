@@ -1,4 +1,4 @@
-const { getEnums, getMetaData, getModels, getSchemaOrgVocab } = require('@openactive/data-models');
+const { getEnums, getMetaData, getModels, getProperties, getSchemaOrgVocab } = require('@openactive/data-models');
 const { constants : fsConstants, promises : fs } = require('fs');
 const fsExtra = require('fs-extra');
 const path = require('path');
@@ -140,11 +140,27 @@ class Generator {
       await this.savePage(pageContent);
     }
 
+    // Create the Property enumeration file
+    const propertiesEnumName = this.propertyEnumerationName;
+    let pageContent = await this.createPropertiesEnumFile(propertiesEnumName);
+    if (!isobject(pageContent)) {
+      let pageName = this.getEnumFilename(propertiesEnumName);
+
+      pageContent = {
+        [pageName]: pageContent
+      };
+    }
+    await this.savePage(pageContent);
+    
     if (this.createIndexFiles && typeof this.createIndexFiles === "function") {
       let pageContent = await this.createIndexFiles();
 
       await this.savePage(pageContent);
     }
+  }
+
+  get propertyEnumerationName() {
+    return 'PropertyEnumeration';
   }
 
   get sortedNamespaces() {
@@ -462,6 +478,25 @@ class Generator {
 
   createEnumFile(typeName, thisEnum) {
     let data = this.createEnumData(typeName, thisEnum);
+
+    return this.renderEnum(data);
+  }
+  
+  createPropertiesEnumFile(typeName) {
+    console.log("Generating enum ", typeName);
+
+    // Create enum values from property list
+    const values = [...getProperties()].map(value => ({
+      memberVal: value,
+      value: this.convertToClassName(this.getPropNameFromFQP(value))
+    }));
+
+    let data = {
+      enumType: typeName,
+      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
+      enumDoc: this.cleanDocLines(['This enumeration contains a value for all properties in the https://schema.org/ and https://openactive.io/ vocabularies.']),
+      values: values
+    };
 
     return this.renderEnum(data);
   }

@@ -153,6 +153,7 @@ class PHP extends Generator {
       case "Number":
         return "Number";
       case "Property":
+        return `\\OpenActive\\Enums\\${this.propertyEnumerationName}`;
       case "Text":
       case "URL":
         return "string";
@@ -204,8 +205,8 @@ class PHP extends Generator {
       case "Integer":
       case "Number":
       case "Time":
-        return true;
       case "Property":
+        return true;
       case "Text":
       case "URL":
         return false;
@@ -326,13 +327,14 @@ class PHP extends Generator {
       case "Number":
         return 6;
       case "Property":
+        return 8;
       case "Text":
       case "URL":
         return 5;
       case "Duration":
         return 4;
       case "null":
-        return 8;
+        return 9;
     }
   }
 
