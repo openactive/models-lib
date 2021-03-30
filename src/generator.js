@@ -141,10 +141,9 @@ class Generator {
     }
 
     // Create the Property enumeration file
-    const propertiesEnumName = this.propertyEnumerationName;
-    let pageContent = await this.createPropertiesEnumFile(propertiesEnumName);
+    let pageContent = await this.createPropertiesEnumFile(this.propertyEnumerationName);
     if (!isobject(pageContent)) {
-      let pageName = this.getEnumFilename(propertiesEnumName);
+      let pageName = this.getEnumFilename(this.propertyEnumerationName);
 
       pageContent = {
         [pageName]: pageContent
