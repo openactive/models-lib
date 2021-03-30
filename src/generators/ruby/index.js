@@ -219,8 +219,9 @@ class Ruby extends Generator {
         return "string";
       case "Duration":
         return "DateInterval";
-      case "URL":
       case "Property":
+        return `OpenActive::Enums::${this.propertyEnumerationName}`;
+      case "URL":
         return "URI";
       case "null":
         return "null";
@@ -279,8 +280,8 @@ class Ruby extends Generator {
       case "Integer":
       case "Number":
       case "Time":
-        return true;
       case "Property":
+        return true;
       case "Text":
       case "URL":
         return false;

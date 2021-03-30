@@ -77,8 +77,9 @@ class DotNet extends Generator {
       case "Duration":
         return "TimeSpan?";
       case "URL":
-      case "Property":
         return "Uri";
+      case "Property":
+        return `${this.propertyEnumerationName}?`;
       default:
         if (enumMap[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName) && !enumMap[compactedTypeName].isSchemaPending) {
