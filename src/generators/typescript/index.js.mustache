@@ -1,0 +1,10 @@
+module.exports = {
+{{#modelsList}}
+  {{{ name }}}: require('{{{ filename }}}'),
+{{/modelsList}}
+  enums: {
+  {{#enumsList}}
+    {{{ name }}}: require('{{{ filename }}}'),
+  {{/enumsList}}
+  },
+};

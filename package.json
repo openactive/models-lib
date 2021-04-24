@@ -27,5 +27,13 @@
   },
   "engines": {
     "node": ">=14"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openactive/models-lib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/openactive/models-lib/issues"
+  },
+  "homepage": "https://github.com/openactive/models-lib#readme"
 }

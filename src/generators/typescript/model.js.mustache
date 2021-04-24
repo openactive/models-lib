@@ -1,0 +1,36 @@
+
+const s = require('@imin/speck');
+const oa = require('../../oa');
+const schema = require('../../schema');
+
+/**
+{{#classDoc}}
+ * {{modelType}}
+ * {{{ . }}}
+{{/classDoc}}
+ */
+const {{{className}}} = s.intersection([
+  s.type({'@type': s.literal('{{{className}}}')}),
+  s.partial({
+    {{#fieldList}}
+      {{#if description }}
+      /**
+      {{#each description}}
+      * {{{ . }}}
+      {{/each}}
+      {{#if codeExample }}
+      *
+      {{#each codeExample }}
+      * {{{ . }}}
+      {{/each }}
+      {{/if }}
+      */
+      {{/if }}
+      {{{ renderPropName propName }}}: {{{ propertyType }}},
+    {{/fieldList}}
+  })
+])
+
+module.exports = {
+  {{{className}}},
+};

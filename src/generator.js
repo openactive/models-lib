@@ -406,7 +406,9 @@ class Generator {
   createModelData(model, extensions) {
     console.log("Generating model ", model.type);
 
-    let fullFields = this.disinheritNotInSpecFields(model, this.models);
+    let fullFields = this.includeInheritedFields ?
+      this.augmentWithParentFields({}, model, this.models, [])
+      : this.disinheritNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields)
       .sort(this.compareFields)
       .map((field, index) => {
@@ -1033,6 +1035,33 @@ class Generator {
       extensionFields: this.sortWithIdAndTypeOnTop(model.extensionFields),
       requiredOptions: model.requiredOptions
     };
+  }
+
+  augmentWithParentFields(augFields, model, models, notInSpec) {
+    if (model.fields) Object.keys(model.fields).forEach(function(field) { 
+      if (!augFields[field] && !notInSpec.includes(field)) {
+        augFields[field] = model.fields[field];
+      }
+    });
+  
+    if (model.hasId && !augFields['@id']) {
+      augFields['@id'] = {
+          'fieldName': '@id',
+          'requiredType': model['idFormat'] || 'http://schema.org/url',
+          'description': ['A unique url based identifier for the record'],
+          'example': ''
+      };
+      if (model.hasId && model.sampleId) {
+        augFields['@id']['example'] = model['sampleId'] + '12345';
+      }
+    }
+  
+    var parentModel = this.getParentModel(model, models);
+    if (parentModel) {
+      return this.augmentWithParentFields(augFields, parentModel, models, notInSpec.concat(model.notInSpec));
+    } else {
+      return augFields;
+    }
   }
 
   sortWithIdAndTypeOnTop(arr) {
