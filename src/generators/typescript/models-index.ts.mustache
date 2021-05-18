@@ -1,0 +1,6 @@
+import * as enums from './enums';
+{{#each modelsList}}
+export * as {{{ name }}} from './{{{ name }}}';
+{{/each}}
+
+export { enums };
