@@ -17,6 +17,7 @@ class Generator {
     this.models = getModels();
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
+    /** @type {string[]} */
     this.generatedFiles = [];
 
     jsonld.documentLoader = this.customLoader.bind(this);

@@ -1,0 +1,29 @@
+import * as Joi from 'joi';
+import { OaValidationError } from '../../oaValidationError';
+
+/**
+{{#enumDoc}}
+ * {{{ . }}}
+{{/enumDoc}}
+ */
+export type Type =
+  {{#each values}}
+  | '{{{memberVal}}}'
+  {{/each}}
+  ;
+
+export const Schema = Joi.string().valid(
+  {{#each values}}
+  '{{{memberVal}}}',
+  {{/each}}
+);
+
+export function validate(maybe{{{typeName}}}: unknown): Type | OaValidationError {
+  const { value, error } = Schema.validate(maybe{{{typeName}}});
+  if (error) {
+    return new OaValidationError('{{{typeName}}}', maybe{{{typeName}}}, error);
+  }
+  /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
+  to have the right type. Therefore, we just cast it to `any`. */
+  return value as any;
+}

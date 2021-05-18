@@ -40,25 +40,41 @@ class TypeScript extends Generator {
     });
   }
 
-  async renderIndex(data) {
-    this.indexTemplate =
-      this.indexTemplate ||
-      (await this.loadTemplate(__dirname + "/index.js.mustache"));
+  // async renderIndex(data) {
+  //   this.indexTemplate =
+  //     this.indexTemplate ||
+  //     (await this.loadTemplate(__dirname + "/index.ts.mustache"));
 
-    return this.indexTemplate(data);
+  //   return this.indexTemplate(data);
+  // }
+
+  async renderEnumsIndex(data) {
+    this.enumsIndexTemplate =
+      this.enumsIndexTemplate ||
+      (await this.loadTemplate(__dirname + "/enums-index.ts.mustache"));
+
+    return this.enumsIndexTemplate(data);
+  }
+
+  async renderModelsIndex(data) {
+    this.modelsIndexTemplate =
+      this.modelsIndexTemplate ||
+      (await this.loadTemplate(__dirname + "/models-index.ts.mustache"));
+
+    return this.modelsIndexTemplate(data);
   }
 
   async renderModel(data) {
     this.modelTemplate =
       this.modelTemplate ||
-      (await this.loadTemplate(__dirname + "/model.js.mustache"));
+      (await this.loadTemplate(__dirname + "/model.ts.mustache"));
 
     return this.modelTemplate(data);
   }
 
   async renderEnum(data) {
     this.enumTemplate = this.enumTemplate || {
-      main: await this.loadTemplate(__dirname + "/enum.js.mustache")
+      main: await this.loadTemplate(__dirname + "/enum.ts.mustache")
     };
 
     let response = {
@@ -71,28 +87,47 @@ class TypeScript extends Generator {
   // TODO: Refactor this to remove string hacks, it is currently dependent on the strings in
   // getDirs, getModelFilename and getEnumFilename
   async createIndexFiles() {
-    const getRequireList = (files, dir, prefix) => {
+    /**
+     * @param {string[]} filePaths
+     * @param {RegExp} matchFileRegex A regex which 1). matches files that we're concerned with and 2). captures the
+     *   name of the model/enum from the file path in its FIRST capture group.
+     */
+    const getRequireList = (filePaths, matchFileRegex) => {
       const list = [];
-      for (const file of files) {
-        if (file.indexOf(prefix) === 0) {
-          const typeName = file.substring(prefix.length, file.length - '.js'.length);
+      for (const filePath of filePaths) {
+        const match = matchFileRegex.exec(filePath);
+        if (match) {
+          const typeName = match[1];
+        // }
+        // if (filePath.indexOf(prefix) === 0) {
+        //   const typeName = filePath.substring(prefix.length, filePath.length - '.ts'.length);
           list.push({
-            name: this.convertToClassName(typeName),
-            filename: dir + typeName,
+            typeSymbolName: this.convertToClassName(typeName),
+            typeName,
           });
         }
       }
       return list;
     };
-    const getData = (files, modelPrefix, enumPrefix) => {
+    /**
+     * @param {string[]} files
+     * @param {RegExp} modelRegex
+     */
+    const getData = (files, matchFileRegex) => {
       return {
-        modelsList: getRequireList(files, './models/', modelPrefix),
-        enumsList: getRequireList(files, './enums/', enumPrefix),
-      }
+        types: getRequireList(files, matchFileRegex),
+        // modelsList: getRequireList(files, './models/', modelPrefix),
+        // enumsList: getRequireList(files, './enums/', enumPrefix),
+      };
     };
     return {
-      "/oa/index.js": await this.renderIndex(getData(this.generatedFiles, '/oa/models/', '/oa/enums/' )),
-      "/schema/index.js": await this.renderIndex(getData(this.generatedFiles, '/schema/models/', '/schema/enums/')),
+      // TODO TODO TODO this should use the enums-index file
+      "/oa/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/oa/enums/([^/]+).ts$"))),
+      "/oa/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
+      "/schema/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/schema/enums/([^/]+).ts$"))),
+      "/schema/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
+      // "/oa/index.ts": await this.renderIndex(getData(this.generatedFiles, '/oa/models/', '/oa/enums/' )),
+      // "/schema/index.ts": await this.renderIndex(getData(this.generatedFiles, '/schema/models/', '/schema/enums/')),
     };
   }
 
@@ -103,21 +138,21 @@ class TypeScript extends Generator {
   getModelFilename(model) {
     if (this.includedInSchema(model.type)) {
       return (
-        "/schema/models/" + this.getPropNameFromFQP(model.type) + ".js"
+        "/schema/" + this.getPropNameFromFQP(model.type) + ".ts"
       );
     }
 
-    return "/oa/models/" + this.getPropNameFromFQP(model.type) + ".js";
+    return "/oa/" + this.getPropNameFromFQP(model.type) + ".ts";
   }
 
   getEnumFilename(thisEnum) {
     if (this.includedInSchema(thisEnum.enumType)) {
       return (
-        "/schema/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".js"
+        "/schema/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".ts"
       );
     }
 
-    return "/oa/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".js";
+    return "/oa/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".ts";
   }
 
   convertToClassName(value) {
