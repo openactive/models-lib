@@ -22,7 +22,7 @@ export type Type =
  * {{{ . }}}
 {{/enumDoc}}
  */
-export const Schema = Joi.string().valid(
+export const JoiSchema = Joi.string().valid(
   {{#each values}}
   '{{{memberVal}}}',
   {{/each}}
@@ -48,7 +48,7 @@ export const Schema = Joi.string().valid(
  * ```
  */
 export function validate(maybe{{{typeName}}}: unknown): Type | OaValidationError {
-  const { value, error } = Schema.validate(maybe{{{typeName}}});
+  const { value, error } = JoiSchema.validate(maybe{{{typeName}}});
   if (error) {
     return new OaValidationError('{{{typeName}}}', maybe{{{typeName}}}, error);
   }

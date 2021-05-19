@@ -116,18 +116,13 @@ class TypeScript extends Generator {
     const getData = (files, matchFileRegex) => {
       return {
         types: getRequireList(files, matchFileRegex),
-        // modelsList: getRequireList(files, './models/', modelPrefix),
-        // enumsList: getRequireList(files, './enums/', enumPrefix),
       };
     };
     return {
-      // TODO TODO TODO this should use the enums-index file
       "/oa/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/oa/enums/([^/]+).ts$"))),
       "/oa/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
       "/schema/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/schema/enums/([^/]+).ts$"))),
       "/schema/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
-      // "/oa/index.ts": await this.renderIndex(getData(this.generatedFiles, '/oa/models/', '/oa/enums/' )),
-      // "/schema/index.ts": await this.renderIndex(getData(this.generatedFiles, '/schema/models/', '/schema/enums/')),
     };
   }
 
@@ -185,7 +180,7 @@ class TypeScript extends Generator {
     switch (typeName) {
       case "Boolean":
         return "boolean";
-      case "Date": // TODO: Find better way of representing Date
+      case "Date":
         return "string";
       case "DateTime":
         return "string";
@@ -295,7 +290,7 @@ class TypeScript extends Generator {
       case "URL":
         return "Joi.string().uri()";
       case "null":
-        return "null"; // TODO what is this?
+        return "null"; // TODO what is this? This will create an erroneous Joi Schema if exercised, but I have not seen it exercised at all - LW.
       default:
         let compactedTypeName = this.getCompacted(prefixedTypeName);
         let extension = this.extensions[model.extensionPrefix];
