@@ -72,6 +72,12 @@ class TypeScript extends Generator {
     return this.modelTemplate(data);
   }
 
+  doIncludeEmptyEnums() {
+    /* TypeScript does not support empty unions (though this is equivalent to `never`, it would be confusing to
+    generate enums whose type was `never` and whose validation functions always returned false) */
+    return false;
+  }
+
   async renderEnum(data) {
     this.enumTemplate = this.enumTemplate || {
       main: await this.loadTemplate(__dirname + "/enum.ts.mustache")
