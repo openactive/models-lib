@@ -444,7 +444,6 @@ class TypeScript extends Generator {
       // and filter out duplicated types
       .map(fullyQualifiedType =>
         getTypeFn(fullyQualifiedType, isExtension, field)
-        // this.getTsType(fullyQualifiedType, isExtension, field)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);

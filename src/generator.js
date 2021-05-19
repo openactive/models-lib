@@ -87,7 +87,7 @@ class Generator {
       if (!this.extensions["schema"] && this.includedInSchema(typeName))
         continue;
 
-      let pageContent = await this.createEnumData(typeName, thisEnum);
+      let pageContent = await this.createEnumDataForEnumType(typeName, thisEnum);
       let keyName = this.getEnumFilename(typeName);
 
       data[keyName] = pageContent;
@@ -474,28 +474,16 @@ class Generator {
     return this.renderModel(data);
   }
 
-  createEnumData(enumType, thisEnum) {
-    console.log("Generating enum ", enumType);
-
-    let doc = this.createEnumDoc(enumType, thisEnum);
-
-    let values = [];
-    // enums imported in from extensions have fqValues,
-    //   whereas first party data-models only have values
-    if (thisEnum.fqValues) {
-      values = thisEnum.fqValues.map(value => ({
-        memberVal: this.expandPrefix(value),
-        value: this.getPropNameFromFQP(value)
-      }));
-    } else {
-      values = thisEnum.values.map(value => ({
-        memberVal: thisEnum.namespace + value,
-        value: value
-      }));
-    }
-
+  /**
+   * Create enum data used for rendering enum mustache files.
+   *
+   * @param {string} enumType
+   * @param {any[]} values
+   * @param {string | string[]} doc
+   */
+  createEnumData(enumType, values, doc) {
     const typeName = this.convertToClassName(this.getPropNameFromFQP(enumType));
-    const data = {
+    return {
       /** e.g. schema:MeasurementTypeEnumeration */
       enumType,
       /**
@@ -516,18 +504,39 @@ class Generator {
       enumDoc: doc,
       values: values
     };
+  }
 
-    return data;
+  createEnumDataForEnumType(enumType, thisEnum) {
+    console.log("Generating enum ", enumType);
+
+    let doc = this.createEnumDoc(enumType, thisEnum);
+
+    let values = [];
+    // enums imported in from extensions have fqValues,
+    //   whereas first party data-models only have values
+    if (thisEnum.fqValues) {
+      values = thisEnum.fqValues.map(value => ({
+        memberVal: this.expandPrefix(value),
+        value: this.getPropNameFromFQP(value)
+      }));
+    } else {
+      values = thisEnum.values.map(value => ({
+        memberVal: thisEnum.namespace + value,
+        value: value
+      }));
+    }
+
+    return this.createEnumData(enumType, values, doc);
   }
 
   createEnumFile(typeName, thisEnum) {
-    let data = this.createEnumData(typeName, thisEnum);
+    let data = this.createEnumDataForEnumType(typeName, thisEnum);
 
     return this.renderEnum(data);
   }
   
-  createPropertiesEnumFile(typeName) {
-    console.log("Generating enum ", typeName);
+  createPropertiesEnumFile(enumType) {
+    console.log("Generating enum ", enumType);
 
     // Create enum values from property list
     const values = [...getProperties()].map(value => ({
@@ -535,12 +544,14 @@ class Generator {
       value: this.convertToClassName(this.getPropNameFromFQP(value))
     }));
 
-    let data = {
-      enumType: typeName,
-      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
-      enumDoc: this.cleanDocLines(['This enumeration contains a value for all properties in the https://schema.org/ and https://openactive.io/ vocabularies.']),
-      values: values
-    };
+    const doc = this.cleanDocLines(['This enumeration contains a value for all properties in the https://schema.org/ and https://openactive.io/ vocabularies.']);
+    const data = this.createEnumData(enumType, values, doc);
+    // let data = {
+    //   enumType: enumType,
+    //   typeName: this.convertToClassName(this.getPropNameFromFQP(enumType)),
+    //   enumDoc: 
+    //   values: values
+    // };
 
     return this.renderEnum(data);
   }
@@ -1140,6 +1151,10 @@ class Generator {
     return this.getNamespace(url)[0] == "schema";
   }
 
+  /**
+   * @param {string[]} docLines
+   * @returns {string | string[]}
+   */
   cleanDocLines(docLines) {
     if (!docLines) {
       return "";
