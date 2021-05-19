@@ -291,7 +291,7 @@ class TypeScript extends Generator {
       case "Duration":
         return "Joi.string().isoDuration()";
       case "Property":
-        return `oa.enums.${this.propertyEnumerationName}.Schema`;
+        return `oa.enums.${this.propertyEnumerationName}.JoiSchema`;
       case "URL":
         return "Joi.string().uri()";
       case "null":
@@ -301,7 +301,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return `oa.enums.${this.convertToCamelCase(typeName)}.Schema`;
+          return `oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`;
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -310,19 +310,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.enums.${this.convertToCamelCase(typeName)}.Schema`
+              `schema.enums.${this.convertToCamelCase(typeName)}.JoiSchema`
             );
           }
-          return `oa.enums.${this.convertToCamelCase(typeName)}.Schema`;
+          return `oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`;
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return `oa.${this.convertToCamelCase(typeName)}.Schema`;
+          return `oa.${this.convertToCamelCase(typeName)}.JoiSchema`;
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.${this.convertToCamelCase(typeName)}.Schema`
+              `schema.${this.convertToCamelCase(typeName)}.JoiSchema`
             );
           }
-          return `oa.${this.convertToCamelCase(typeName)}.Schema`;
+          return `oa.${this.convertToCamelCase(typeName)}.JoiSchema`;
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`

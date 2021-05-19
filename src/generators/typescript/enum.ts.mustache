@@ -3,7 +3,9 @@ import * as Joi from 'joi';
 import { OaValidationError } from '../../oaValidationError';
 
 /**
+ * {{{ enumType }}}
 {{#enumDoc}}
+ *
  * {{{ . }}}
 {{/enumDoc}}
  */
@@ -13,12 +15,38 @@ export type Type =
   {{/each}}
   ;
 
+/**
+ * {{{ enumType }}} - Validation schema (w/ JOI)
+{{#enumDoc}}
+ *
+ * {{{ . }}}
+{{/enumDoc}}
+ */
 export const Schema = Joi.string().valid(
   {{#each values}}
   '{{{memberVal}}}',
   {{/each}}
 );
 
+/**
+ * Runtime validator for {{{ enumType }}}.
+ *
+ * If some data has one of the values of the {{{ enumType }}} enum, it will be returned with the correct type.
+ * Otherwise, this function returns an `OAValidationError` with details about why the data does not match.
+ *
+ * Use this to e.g. check a JSON object received in an HTTP request. Example usage (for an express request handler):
+ *
+ * ```ts
+ * const maybe{{{ typeName }}} = {{{ typeName }}}.validate(req.body); // `req.body` will have type `any` or `unknown`
+ * if (maybe{{{ typeName }}} instanceof OaValidationError) {
+ *   // From this point on, `maybe{{{ typeName }}}` will have type `OaValidationError`
+ *   const error = maybe{{{ typeName }}};
+ *   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
+ * }
+ * // From this point on, `maybe{{{ typeName }}}` will have type `{{{ typeName }}}.Type`
+ * const {{{ typeNameFirstLetterLowercased }}} = maybe{{{ typeName }}};
+ * ```
+ */
 export function validate(maybe{{{typeName}}}: unknown): Type | OaValidationError {
   const { value, error } = Schema.validate(maybe{{{typeName}}});
   if (error) {

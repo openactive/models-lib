@@ -404,6 +404,13 @@ class Generator {
     }
   }
 
+  /**
+   * @param {string} string
+   */
+  static lowercaseFirstLetter(string) {
+    return `${string[0].toLowerCase()}${string.slice(1)}`;
+  }
+
   createModelData(model, extensions) {
     console.log("Generating model ", model.type);
 
@@ -427,13 +434,24 @@ class Generator {
     let doc = this.createModelDoc(model);
 
     const modelTypePropName = this.getPropNameFromFQP(model.type);
+    const className = this.convertToClassName(modelTypePropName);
     const data = {
       classDoc: doc,
       /**
-       * e.g. ThreeDModel (symbol name - as programming languages have limitations on what characters can be used
-       * in a symbol name)
+       * Symbol name to use for class/type - it differentiates from modelType/modelTypePropName as it disallows
+       * whatever letters the programming language disallows for its symbol names e.g. 3 -> Three
+       *
+       * e.g. ThreeDModel
        */
-      className: this.convertToClassName(modelTypePropName),
+      className,
+      /**
+       * Symbol name to use for variable names in camel-case languages where variables start with a lowercase letter.
+       *
+       * Useful for example code in documentation.
+       *
+       * e.g. threeDModel
+       */
+      classNameFirstLetterLowercased: Generator.lowercaseFirstLetter(className),
       inherits: inherits,
       /** e.g. schema:3DModel */
       modelType: model.type,
@@ -456,10 +474,10 @@ class Generator {
     return this.renderModel(data);
   }
 
-  createEnumData(typeName, thisEnum) {
-    console.log("Generating enum ", typeName);
+  createEnumData(enumType, thisEnum) {
+    console.log("Generating enum ", enumType);
 
-    let doc = this.createEnumDoc(typeName, thisEnum);
+    let doc = this.createEnumDoc(enumType, thisEnum);
 
     let values = [];
     // enums imported in from extensions have fqValues,
@@ -476,9 +494,25 @@ class Generator {
       }));
     }
 
-    let data = {
-      enumType: typeName,
-      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
+    const typeName = this.convertToClassName(this.getPropNameFromFQP(enumType));
+    const data = {
+      /** e.g. schema:MeasurementTypeEnumeration */
+      enumType,
+      /**
+       * Symbol name to use for class/type - it differentiates from modelType/modelTypePropName as it disallows
+       * whatever letters the programming language disallows for its symbol names e.g. 3 -> Three
+       *
+       * e.g. MeasurementTypeEnumeration
+       */
+      typeName,
+      /**
+       * Symbol name to use for variable names in camel-case languages where variables start with a lowercase letter.
+       *
+       * Useful for example code in documentation.
+       *
+       * e.g. measurementTypeEnumeration
+       */
+      typeNameFirstLetterLowercased: Generator.lowercaseFirstLetter(typeName),
       enumDoc: doc,
       values: values
     };

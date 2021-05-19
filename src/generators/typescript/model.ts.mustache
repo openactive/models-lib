@@ -4,8 +4,9 @@ import { OaValidationError } from '../oaValidationError';
 import { oa, schema } from '..';
 
 /**
-{{#classDoc}}
  * {{modelType}}
+{{#classDoc}}
+ *
  * {{{ . }}}
 {{/classDoc}}
  */
@@ -29,17 +30,43 @@ export type Type = {
 {{/fieldList}}
 }
 
-/* unfortunately, it must be given this generic type because these schemas can sometimes be recursively defined, which
-causes an error due to potentially infinite nesting of generic params */
-export const Schema: Joi.ObjectSchema<any> = Joi.object({
-  '@type': Joi.string().valid('{{{ className }}}').required(),
+/* unfortunately, it must be given this generic type `ObjectSchema<any>` because these schemas can sometimes be
+recursively defined, which causes a type error due to potentially infinite nesting of generic params */
+/**
+ * {{{ modelType }}} - Validation schema (w/ JOI)
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ */
+export const JoiSchema: Joi.ObjectSchema<any> = Joi.object({
+  '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
 {{#fieldList}}
   {{{ renderPropName propName }}}: {{{ propertyJoiType }}},
 {{/fieldList}}
 });
 
+/**
+ * Runtime validator for {{{ modelType }}}.
+ *
+ * If some data has a structure which matches a {{{ modelType }}}, it will be returned with the correct type.
+ * Otherwise, this function returns an OAValidationError with details about why the data does not match.
+ *
+ * Use this to e.g. check a JSON object received in an HTTP request. Example usage (for an express request handler):
+ *
+ * ```ts
+ * const maybe{{{ className }}} = {{{ className }}}.validate(req.body); // `req.body` will have type `any` or `unknown`
+ * if (maybe{{{ className }}} instanceof OaValidationError) {
+ *   // From this point on, `maybe{{{ className }}}` will have type `OaValidationError`
+ *   const error = maybe{{{ className }}};
+ *   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
+ * }
+ * // From this point on, `maybe{{{ className }}}` will have type `{{{ className }}}.Type`
+ * const {{{ classNameFirstLetterLowercased }}} = maybe{{{ className }}};
+ * ```
+ */
 export function validate(maybe{{{ className }}}: unknown): Type | OaValidationError {
-  const { value, error } = Schema.validate(maybe{{{ className }}});
+  const { value, error } = JoiSchema.validate(maybe{{{ className }}});
   if (error) {
     return new OaValidationError('{{{ className }}}', maybe{{{ className }}}, error);
   }
