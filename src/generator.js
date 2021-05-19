@@ -426,11 +426,19 @@ class Generator {
 
     let doc = this.createModelDoc(model);
 
-    let data = {
+    const modelTypePropName = this.getPropNameFromFQP(model.type);
+    const data = {
       classDoc: doc,
-      className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
+      /**
+       * e.g. ThreeDModel (symbol name - as programming languages have limitations on what characters can be used
+       * in a symbol name)
+       */
+      className: this.convertToClassName(modelTypePropName),
       inherits: inherits,
+      /** e.g. schema:3DModel */
       modelType: model.type,
+      /** e.g. 3DModel */
+      modelTypePropName,
       fieldList: this.createTableFromFieldList(
         fullFieldsList,
         hasBaseClass,
