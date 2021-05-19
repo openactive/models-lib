@@ -1,7 +1,7 @@
-
-const s = require('@imin/speck');
-const oa = require('../../oa');
-const schema = require('../../schema');
+// This file was generated
+import * as Joi from 'joi';
+import { OaValidationError } from '../oaValidationError';
+import { oa, schema } from '..';
 
 /**
 {{#classDoc}}
@@ -9,28 +9,41 @@ const schema = require('../../schema');
  * {{{ . }}}
 {{/classDoc}}
  */
-const {{{className}}} = s.intersection([
-  s.type({'@type': s.literal('{{{className}}}')}),
-  s.partial({
-    {{#fieldList}}
-      {{#if description }}
-      /**
-      {{#each description}}
-      * {{{ . }}}
-      {{/each}}
-      {{#if codeExample }}
-      *
-      {{#each codeExample }}
-      * {{{ . }}}
-      {{/each }}
-      {{/if }}
-      */
-      {{/if }}
-      {{{ renderPropName propName }}}: {{{ propertyType }}},
-    {{/fieldList}}
-  })
-])
+export type Type = {
+  '@type': '{{{ className }}}'; // TODO TODO TODO this won't work for 3DModel
+{{#fieldList}}
+  {{#if description }}
+  /**
+  {{#each description}}
+   * {{{ . }}}
+  {{/each}}
+  {{#if codeExample }}
+   *
+  {{#each codeExample }}
+   * {{{ . }}}
+  {{/each }}
+  {{/if }}
+   */
+  {{/if }}
+  {{{ renderPropName propName }}}?: {{{ propertyTsType }}},
+{{/fieldList}}
+}
 
-module.exports = {
-  {{{className}}},
-};
+/* unfortunately, it must be given this generic type because these schemas can sometimes be recursively defined, which
+causes an error due to potentially infinite nesting of generic params */
+export const Schema: Joi.ObjectSchema<any> = Joi.object({
+  '@type': Joi.string().valid('{{{ className }}}').required(),
+{{#fieldList}}
+  {{{ renderPropName propName }}}: {{{ propertyJoiType }}},
+{{/fieldList}}
+});
+
+export function validate(maybe{{{ className }}}: unknown): Type | OaValidationError {
+  const { value, error } = Schema.validate(maybe{{{ className }}});
+  if (error) {
+    return new OaValidationError('{{{ className }}}', maybe{{{ className }}}, error);
+  }
+  /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
+  to have the right type. Therefore, we just cast it to `any`. */
+  return value as any;
+}

@@ -166,52 +166,53 @@ class TypeScript extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, isExtension, field) {
-    let baseType = this.getValidationBaseType(
+  getTsType(fullyQualifiedType, isExtension, field) {
+    const baseType = this.getTsBaseType(
       fullyQualifiedType,
       isExtension,
       field
     );
     if (this.isArray(fullyQualifiedType)) {
-      return `s.array(${baseType})`;
+      return `${baseType}[]`;
+      // return `s.array(${baseType})`;
     } else {
       return baseType;
     }
   }
 
-  getValidationBaseType(prefixedTypeName, isExtension, model) {
-    let typeName = this.getPropNameFromFQP(prefixedTypeName);
+  getTsBaseType(prefixedTypeName, isExtension, model) {
+    const typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
-        return "s.boolean";
+        return "boolean";
       case "Date": // TODO: Find better way of representing Date
-        return "s.string";
+        return "string";
       case "DateTime":
-        return "s.isoDateTimeString";
+        return "string";
       case "Time":
-        return "s.string";
+        return "string";
       case "Integer":
-        return "s.nonNegativeInt";
+        return "number";
       case "Float":
-        return "s.nonNegativeFloat";
+        return "number";
       case "Number":
-        return "s.nonNegativeFloat";
+        return "number";
       case "Text":
-        return "s.string";
+        return "string";
       case "Duration":
-        return "s.string";
+        return "string";
       case "Property":
-        return `oa.enums.${this.propertyEnumerationName}`;
+        return `oa.enums.${this.propertyEnumerationName}.Type`;
       case "URL":
-        return "s.urlString";
+        return "string";
       case "null":
-        return "s.null";
+        return "null";
       default:
         let compactedTypeName = this.getCompacted(prefixedTypeName);
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return "schema.enums." + this.convertToCamelCase(typeName);
+          return `oa.enums.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -220,19 +221,108 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              "schema.enums." + this.convertToCamelCase(typeName)
+              `schema.enums.${this.convertToCamelCase(typeName)}.Type`
             );
           }
-          return "oa.enums." + this.convertToCamelCase(typeName);
+          return `oa.enums.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return "oa." + this.convertToCamelCase(typeName);
+          return `oa.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              "schema." + this.convertToCamelCase(typeName)
+              `schema.${this.convertToCamelCase(typeName)}.Type`
             );
           }
-          return "oa." + this.convertToCamelCase(typeName);
+          return `oa.${this.convertToCamelCase(typeName)}.Type`;
+        } else if (/^schema:/.test(model.memberName)) {
+          console.info(
+            `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
+          );
+          return; // nothing to return here
+        } else {
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
+        }
+    }
+  }
+
+  /**
+   * @param {string} fullyQualifiedType
+   */
+  getJoiType(fullyQualifiedType, isExtension, field) {
+    const baseType = this.getJoiBaseType(
+      fullyQualifiedType,
+      isExtension,
+      field
+    );
+    if (this.isArray(fullyQualifiedType)) {
+      return `Joi.array().items(${baseType})`;
+    } else {
+      return baseType;
+    }
+  }
+
+  /**
+   * @param {string} prefixedTypeName
+   */
+  getJoiBaseType(prefixedTypeName, isExtension, model) {
+    const typeName = this.getPropNameFromFQP(prefixedTypeName);
+    switch (typeName) {
+      case "Boolean":
+        return "Joi.boolean()";
+      case "Date":
+        return "Joi.string().isoDate()";
+      case "DateTime":
+        return "Joi.string().isoDate()";
+      case "Time":
+        return "Joi.string()";
+      case "Integer":
+        return "Joi.number().integer()";
+      case "Float":
+        return "Joi.number()";
+      case "Number":
+        return "Joi.number()";
+      case "Text":
+        return "Joi.string()";
+      case "Duration":
+        return "Joi.string().isoDuration()";
+      case "Property":
+        return `oa.enums.${this.propertyEnumerationName}.Schema`;
+      case "URL":
+        return "Joi.string().uri()";
+      case "null":
+        return "null"; // TODO what is this?
+      default:
+        let compactedTypeName = this.getCompacted(prefixedTypeName);
+        let extension = this.extensions[model.extensionPrefix];
+
+        if (this.enumMap[typeName] && extension && extension.preferOA) {
+          return `oa.enums.${this.convertToCamelCase(typeName)}.Schema`;
+        } else if (this.enumMap[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.enumMap[typeName]) {
+            compactedTypeName = typeName;
+          }
+
+          if (this.includedInSchema(compactedTypeName)) {
+            return (
+              `schema.enums.${this.convertToCamelCase(typeName)}.Schema`
+            );
+          }
+          return `oa.enums.${this.convertToCamelCase(typeName)}.Schema`;
+        } else if (this.models[typeName] && extension && extension.preferOA) {
+          return `oa.${this.convertToCamelCase(typeName)}.Schema`;
+        } else if (this.models[compactedTypeName]) {
+          if (this.includedInSchema(compactedTypeName)) {
+            return (
+              `schema.${this.convertToCamelCase(typeName)}.Schema`
+            );
+          }
+          return `oa.${this.convertToCamelCase(typeName)}.Schema`;
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -273,21 +363,23 @@ class TypeScript extends Generator {
 
   createPropertyFromField(field, models, enumMap, hasBaseClass, model) {
     let memberName = field.memberName || field.fieldName;
-    let isExtension = !!field.extensionPrefix;
-    let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
-    let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createLangTypeString(field, isExtension);
+    const isExtension = !!field.extensionPrefix;
+    const isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
+    const propertyName = this.convertToCamelCase(field.fieldName);
+    const propertyTsType = this.createTsTypeString(field, isExtension);
+    const propertyJoiType = this.createJoiTypeString(field, isExtension);
 
     if (["oa", "schema"].includes(this.getPrefix(memberName))) {
       memberName = this.getPropNameFromFQP(memberName);
     }
 
-    let obj = {
+    const obj = {
       memberName: memberName,
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
-      propertyType: propertyType,
+      propertyTsType,
+      propertyJoiType,
     };
 
     if (field.disinherit) {
@@ -301,29 +393,63 @@ class TypeScript extends Generator {
     }
   }
 
-  createLangTypeString(field, isExtension) {
-    const types = this.createTypesArray(field, isExtension);
-    
+  /**
+   * For a list of types (which have alredy been converted to strings), combine them in some way.
+   *
+   * If there's only one type, it is just returned as-is.
+   * If there are multiple, then they are combined in some way
+   *
+   * @param {(types: string[]) => string} combineMultiples
+   * @param {string[]} types
+   */
+  static combineTypes(combineMultiples, types) {
     if (types.length === 0) return null;
     if (types.length === 1) return types[0];
     
-    return `s.union([${types.join(",")}])`
+    return combineMultiples(types);
   }
 
-  createTypesArray(field, isExtension) {
-    let types = []
+  createTsTypeString(field, isExtension) {
+    const typesArray = this.createTsTypesArray(field, isExtension);
+    return TypeScript.combineTypes(types => types.join(' | '), typesArray);
+  }
+
+  /**
+   * The returned array represents a union of possible types
+   */
+  createTsTypesArray(field, isExtension) {
+    return TypeScript.createGenericTypesArray(this.getTsBaseType.bind(this), field, isExtension);
+  }
+
+  createJoiTypeString(field, isExtension) {
+    const typesArray = this.createJoiTypesArray(field, isExtension);
+    return TypeScript.combineTypes(types => `Joi.alternatives().try(${types.join(', ')})`, typesArray);
+  }
+
+  /**
+   * The returned array represents a union of possible types
+   */
+  createJoiTypesArray(field, isExtension) {
+    return TypeScript.createGenericTypesArray(this.getJoiBaseType.bind(this), field, isExtension);
+  }
+
+  /**
+   * @param {(fullyQualifieidType: string, isExtension: any, field: any) => string} getTypeFn
+   * @returns {string[]}
+   */
+  static createGenericTypesArray(getTypeFn, field, isExtension) {
+    const types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
       .concat(field.alternativeModels)
       .concat(field.model)
       .concat(field.allowReferencing ? ['https://schema.org/URL'] : [])
-      .filter(type => type !== undefined);
-
-    // We get the types from given schema/OA ones,
-    // and filter out duplicated types
-    types = types
+      .filter(type => type !== undefined)
+      // We get the types from given schema/OA ones,
+      // and filter out duplicated types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, isExtension, field)
+        getTypeFn(fullyQualifiedType, isExtension, field)
+        // this.getTsType(fullyQualifiedType, isExtension, field)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
