@@ -104,12 +104,12 @@ class Generator {
     await this.dumpStructures();
   }
 
-  /**
-   * Does this generator want to include empty enums in its output? Override this to `false` if it does not.
-   */
-  doIncludeEmptyEnums() {
-    return true;
-  }
+  // /**
+  //  * Does this generator want to include empty enums in its output? Override this to `false` if it does not.
+  //  */
+  // doIncludeEmptyEnums() {
+  //   return true;
+  // }
 
   async generateModelClassFiles() {
     await this.initialize();
@@ -137,11 +137,11 @@ class Generator {
       if ((!this.extensions["schema"] && this.includedInSchema(typeName)) && !thisEnum.isSchemaPending) {
         continue;
       }
-      // filter out empty enums if the language does not support them.
-      if (!this.doIncludeEmptyEnums() && (!Array.isArray(thisEnum.values) || thisEnum.values.length === 0)) {
-        console.log('Skipping empty enum:', typeName);
-        continue;
-      }
+      // // filter out empty enums if the language does not support them.
+      // if (!this.doIncludeEmptyEnums() && (!Array.isArray(thisEnum.values) || thisEnum.values.length === 0)) {
+      //   console.log('Skipping empty enum:', typeName);
+      //   continue;
+      // }
 
       let pageContent = await this.createEnumFile(typeName, thisEnum);
       if (!isobject(pageContent)) {

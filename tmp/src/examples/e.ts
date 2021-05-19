@@ -5,7 +5,7 @@ import { OaValidationError } from '../oaValidationError';
 console.log('hi0');
 
 const event = Event.validate({ '@type': 'Event' });
-assert(!(event instanceof OaValidationError));
+// assert(!(event instanceof OaValidationError));
 
 
 // const t: {

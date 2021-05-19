@@ -9,7 +9,8 @@ import { OaValidationError } from '../../oaValidationError';
  * {{{ . }}}
 {{/enumDoc}}
  */
-export type Type =
+export type Type = 
+  {{^values}}string{{/values}}
   {{#each values}}
   | '{{{memberVal}}}'
   {{/each}}
@@ -23,6 +24,7 @@ export type Type =
 {{/enumDoc}}
  */
 export const JoiSchema = Joi.string().valid(
+  {{! Fortunately, this works even if there are no values. Joi.string().valid(), counter-intuitively, allows any kind of string }}
   {{#each values}}
   '{{{memberVal}}}',
   {{/each}}

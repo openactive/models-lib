@@ -72,11 +72,11 @@ class TypeScript extends Generator {
     return this.modelTemplate(data);
   }
 
-  doIncludeEmptyEnums() {
-    /* TypeScript does not support empty unions (though this is equivalent to `never`, it would be confusing to
-    generate enums whose type was `never` and whose validation functions always returned false) */
-    return false;
-  }
+  // doIncludeEmptyEnums() {
+  //   /* TypeScript does not support empty unions (though this is equivalent to `never`, it would be confusing to
+  //   generate enums whose type was `never` and whose validation functions always returned false) */
+  //   return false;
+  // }
 
   async renderEnum(data) {
     this.enumTemplate = this.enumTemplate || {
@@ -253,12 +253,14 @@ class TypeScript extends Generator {
 
   /**
    * @param {string} fullyQualifiedType
+   * @param {string} rootModelPrefixedTypeName
    */
-  getJoiType(fullyQualifiedType, isExtension, field) {
+  getJoiType(fullyQualifiedType, isExtension, field, rootModelPrefixedTypeName) {
     const baseType = this.getJoiBaseType(
       fullyQualifiedType,
       isExtension,
-      field
+      field,
+      rootModelPrefixedTypeName,
     );
     if (this.isArray(fullyQualifiedType)) {
       return `Joi.array().items(${baseType})`;
@@ -269,9 +271,19 @@ class TypeScript extends Generator {
 
   /**
    * @param {string} prefixedTypeName
+   * @param {string} rootModelPrefixedTypeName Type of the root model e.g. `schema:Enumeration`
+   *   If this is getting the Joi base type for, say, the `ageRange` property within `Event`, the model itself
+   *   would be QuantitativeValue (for `ageRange`), and the rootModel would be `Event`.
    */
-  getJoiBaseType(prefixedTypeName, isExtension, model) {
+  getJoiBaseType(prefixedTypeName, isExtension, model, rootModelPrefixedTypeName) {
+    // if (prefixedTypeName === rootModelPrefixedTypeName) {
+    // }
     const typeName = this.getPropNameFromFQP(prefixedTypeName);
+    if (typeName === this.getPropNameFromFQP(rootModelPrefixedTypeName)) {
+      /* Make this an absolute link to the root model. Joi models cannot be built recursively in the normal manner
+      otherwise you'll develop a situation akin to `const x = { field: x };` which has no clear value */
+      return "Joi.link('/')";
+    }
     switch (typeName) {
       case "Boolean":
         return "Joi.boolean()";
@@ -368,7 +380,8 @@ class TypeScript extends Generator {
     const isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
     const propertyName = this.convertToCamelCase(field.fieldName);
     const propertyTsType = this.createTsTypeString(field, isExtension);
-    const propertyJoiType = this.createJoiTypeString(field, isExtension);
+    // model.type is e.g. schema:Enumeration
+    const propertyJoiType = this.createJoiTypeString(field, isExtension, model.type);
 
     if (["oa", "schema"].includes(this.getPrefix(memberName))) {
       memberName = this.getPropNameFromFQP(memberName);
@@ -419,26 +432,31 @@ class TypeScript extends Generator {
    * The returned array represents a union of possible types
    */
   createTsTypesArray(field, isExtension) {
-    return TypeScript.createGenericTypesArray(this.getTsBaseType.bind(this), field, isExtension);
+    return TypeScript.createGenericTypesArray(this.getTsType.bind(this), field, isExtension);
   }
 
-  createJoiTypeString(field, isExtension) {
-    const typesArray = this.createJoiTypesArray(field, isExtension);
+  /**
+   * @param {string} rootModelPrefixedTypeName
+   */
+  createJoiTypeString(field, isExtension, rootModelPrefixedTypeName) {
+    const typesArray = this.createJoiTypesArray(field, isExtension, rootModelPrefixedTypeName);
     return TypeScript.combineTypes(types => `Joi.alternatives().try(${types.join(', ')})`, typesArray);
   }
 
   /**
    * The returned array represents a union of possible types
+   *
+   * @param {string} rootModelPrefixedTypeName
    */
-  createJoiTypesArray(field, isExtension) {
-    return TypeScript.createGenericTypesArray(this.getJoiBaseType.bind(this), field, isExtension);
+  createJoiTypesArray(field, isExtension, rootModelPrefixedTypeName) {
+    return TypeScript.createGenericTypesArray(this.getJoiType.bind(this), field, isExtension, rootModelPrefixedTypeName);
   }
 
   /**
-   * @param {(fullyQualifieidType: string, isExtension: any, field: any) => string} getTypeFn
+   * @param {(fullyQualifieidType: string, isExtension: any, field: any, rootModelPrefixedTypeName: string) => string} getTypeFn
    * @returns {string[]}
    */
-  static createGenericTypesArray(getTypeFn, field, isExtension) {
+  static createGenericTypesArray(getTypeFn, field, isExtension, rootModelPrefixedTypeName) {
     const types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
@@ -449,7 +467,7 @@ class TypeScript extends Generator {
       // We get the types from given schema/OA ones,
       // and filter out duplicated types
       .map(fullyQualifiedType =>
-        getTypeFn(fullyQualifiedType, isExtension, field)
+        getTypeFn(fullyQualifiedType, isExtension, field, rootModelPrefixedTypeName)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
