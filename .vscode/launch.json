@@ -13,7 +13,7 @@
       ],
       "program": "src/app.js",
       "args": [
-        "generate", "TypeScript", "--destination", "./tmp/src"
+        "generate", "TypeScript", "--destination", "../models-ts/src/"
       ]
     },
     {
