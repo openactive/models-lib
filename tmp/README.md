@@ -18,13 +18,15 @@ import { DayOfWeek, ImageObject } from '@openactive/models-ts/lib/schema';
 const myRequiredStatusType: RequiredStatusType.Type = 'https://openactive.io/Required';
 const myNotRequiredStatusType: RequiredStatusType.Type = 'somethingelse.com'; // this will raise a TS error
 
-// Validator lives at `.validate(..)`
-const maybeRequiredStatusType = RequiredStatusType.validate('https://openactive.io/Optional');
+// Validator lives at `.validate(..)`. Use this to validate unknown values.
+const maybeRequiredStatusType = RequiredStatusType.validate(someData);
 if (maybeRequiredStatusType instanceof OaValidationResult) {
+  // The data did not conform to the RequiredStatusType type.
   // From this point on, `maybeRequiredStatusType` will have type `OaValidationError`
   const error = maybeRequiredStatusType;
   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
 } else {
+  // The data _did_ conform to the RequiredStatusType type.
   // From this point on, `maybeRequiredStatusType` will have type `RequiredStatusType.Type`
   const requiredStatusType = maybeRequiredStatusType;
 }

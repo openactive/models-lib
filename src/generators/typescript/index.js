@@ -40,28 +40,24 @@ class TypeScript extends Generator {
     });
   }
 
-  // async renderIndex(data) {
-  //   this.indexTemplate =
-  //     this.indexTemplate ||
-  //     (await this.loadTemplate(__dirname + "/index.ts.mustache"));
+  async renderIndex(data) {
+    this.indexTemplate =
+      this.indexTemplate ||
+      (await this.loadTemplate(__dirname + "/index.ts.mustache"));
 
-  //   return this.indexTemplate(data);
-  // }
-
-  async renderEnumsIndex(data) {
-    this.enumsIndexTemplate =
-      this.enumsIndexTemplate ||
-      (await this.loadTemplate(__dirname + "/enums-index.ts.mustache"));
-
-    return this.enumsIndexTemplate(data);
+    return this.indexTemplate(data);
   }
 
-  async renderModelsIndex(data) {
-    this.modelsIndexTemplate =
-      this.modelsIndexTemplate ||
-      (await this.loadTemplate(__dirname + "/models-index.ts.mustache"));
-
-    return this.modelsIndexTemplate(data);
+  /**
+   * @param {string} typeName
+   */
+  filterModel(typeName, model) {
+    /* EventStatusType is erroneously made into a model as well as an enum. Because the TS generator puts enums and
+    models into the same directory, this causes issues */
+    if (typeName === 'schema:EventStatusType') {
+      return false;
+    }
+    return true;
   }
 
   async renderModel(data) {
@@ -71,12 +67,6 @@ class TypeScript extends Generator {
 
     return this.modelTemplate(data);
   }
-
-  // doIncludeEmptyEnums() {
-  //   /* TypeScript does not support empty unions (though this is equivalent to `never`, it would be confusing to
-  //   generate enums whose type was `never` and whose validation functions always returned false) */
-  //   return false;
-  // }
 
   async renderEnum(data) {
     this.enumTemplate = this.enumTemplate || {
@@ -125,10 +115,10 @@ class TypeScript extends Generator {
       };
     };
     return {
-      "/oa/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/oa/enums/([^/]+).ts$"))),
-      "/oa/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
-      "/schema/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/schema/enums/([^/]+).ts$"))),
-      "/schema/index.ts": await this.renderModelsIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
+      // "/oa/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/oa/enums/([^/]+).ts$"))),
+      "/oa/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
+      // "/schema/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/schema/enums/([^/]+).ts$"))),
+      "/schema/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
     };
   }
 
@@ -136,24 +126,25 @@ class TypeScript extends Generator {
     return ["schema/", "oa/"];
   }
 
-  getModelFilename(model) {
-    if (this.includedInSchema(model.type)) {
+  /**
+   * @param {string} type
+   */
+  genericGetFilename(type) {
+    if (this.includedInSchema(type)) {
       return (
-        "/schema/" + this.getPropNameFromFQP(model.type) + ".ts"
+        "/schema/" + this.getPropNameFromFQP(type) + ".ts"
       );
     }
 
-    return "/oa/" + this.getPropNameFromFQP(model.type) + ".ts";
+    return "/oa/" + this.getPropNameFromFQP(type) + ".ts";
+  }
+
+  getModelFilename(model) {
+    return this.genericGetFilename(model.type);
   }
 
   getEnumFilename(thisEnum) {
-    if (this.includedInSchema(thisEnum.enumType)) {
-      return (
-        "/schema/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".ts"
-      );
-    }
-
-    return "/oa/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".ts";
+    return this.genericGetFilename(thisEnum.enumType);
   }
 
   convertToClassName(value) {
@@ -203,7 +194,7 @@ class TypeScript extends Generator {
       case "Duration":
         return "string";
       case "Property":
-        return `oa.enums.${this.propertyEnumerationName}.Type`;
+        return `oa.${this.propertyEnumerationName}.Type`;
       case "URL":
         return "string";
       case "null":
@@ -213,7 +204,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return `oa.enums.${this.convertToCamelCase(typeName)}.Type`;
+          return `oa.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -222,10 +213,10 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.enums.${this.convertToCamelCase(typeName)}.Type`
+              `schema.${this.convertToCamelCase(typeName)}.Type`
             );
           }
-          return `oa.enums.${this.convertToCamelCase(typeName)}.Type`;
+          return `oa.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.models[typeName] && extension && extension.preferOA) {
           return `oa.${this.convertToCamelCase(typeName)}.Type`;
         } else if (this.models[compactedTypeName]) {
@@ -301,7 +292,7 @@ class TypeScript extends Generator {
         return "Joi.string()"; // The below can be we used if Joi is upgraded to v17
         // return "Joi.string().isoDuration()";
       case "Property":
-        return lazy(`oa.enums.${this.propertyEnumerationName}.JoiSchema`);
+        return lazy(`oa.${this.propertyEnumerationName}.JoiSchema`);
       case "URL":
         return "Joi.string().uri()";
       case "null":
@@ -311,7 +302,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return lazy(`oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -320,10 +311,10 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              lazy(`schema.enums.${this.convertToCamelCase(typeName)}.JoiSchema`)
+              lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`)
             );
           }
-          return lazy(`oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.models[typeName] && extension && extension.preferOA) {
           return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.models[compactedTypeName]) {

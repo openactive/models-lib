@@ -1,7 +1,7 @@
 import { strict as assert } from 'assert';
 import * as util from 'util';
 import { EventSeries } from '../oa';
-import { OaValidationError } from '../oaValidationError';
+import { OaValidationError } from '..';
 
 const eventSeries = EventSeries.validate({
   '@type': 'EventSeries',

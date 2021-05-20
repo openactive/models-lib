@@ -1,6 +1,6 @@
 // This file was generated
 import * as Joi from 'joi';
-import { OaValidationError } from '../../oaValidationError';
+import { OaValidationError } from '../oaValidationError';
 
 /**
  * {{{ enumType }}}
@@ -10,6 +10,9 @@ import { OaValidationError } from '../../oaValidationError';
 {{/enumDoc}}
  */
 export type Type = 
+  {{! if enum does not have any values, this is because of a models-lib issue where parent enums (like
+  https://schema.org/MeasurementTypeEnumeration) are not expanded to include the values of their child enums and
+  instead have no values. For now, setting the type to string is a reasonable compromise. }}
   {{^values}}string{{/values}}
   {{#each values}}
   | '{{{memberVal}}}'
