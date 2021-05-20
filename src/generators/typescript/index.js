@@ -161,7 +161,6 @@ class TypeScript extends Generator {
     );
     if (this.isArray(fullyQualifiedType)) {
       return `${baseType}[]`;
-      // return `s.array(${baseType})`;
     } else {
       return baseType;
     }
