@@ -94,9 +94,6 @@ class TypeScript extends Generator {
         const match = matchFileRegex.exec(filePath);
         if (match) {
           const typeName = match[1];
-        // }
-        // if (filePath.indexOf(prefix) === 0) {
-        //   const typeName = filePath.substring(prefix.length, filePath.length - '.ts'.length);
           list.push({
             typeSymbolName: this.convertToClassName(typeName),
             typeName,
@@ -115,9 +112,7 @@ class TypeScript extends Generator {
       };
     };
     return {
-      // "/oa/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/oa/enums/([^/]+).ts$"))),
       "/oa/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
-      // "/schema/enums/index.ts": await this.renderEnumsIndex(getData(this.generatedFiles, new RegExp("^/schema/enums/([^/]+).ts$"))),
       "/schema/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
     };
   }
