@@ -290,7 +290,9 @@ class TypeScript extends Generator {
       case "URL":
         return "Joi.string().uri()";
       case "null":
-        return "null"; // TODO what is this? This will create an erroneous Joi Schema if exercised, but I have not seen it exercised at all - LW.
+        /* TODO what does it mean for this to be null? This will create an erroneous Joi Schema if exercised, but I
+        have not seen it exercised at all - LW. */
+        throw new Error('An explicit `null` cannot be specified in JOI');
       default:
         let compactedTypeName = this.getCompacted(prefixedTypeName);
         let extension = this.extensions[model.extensionPrefix];
