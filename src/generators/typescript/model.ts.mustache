@@ -39,7 +39,7 @@ recursively defined, which causes a type error due to potentially infinite nesti
  * {{{ . }}}
 {{/classDoc}}
  */
-export const JoiSchema: Joi.ObjectSchema<any> = Joi.object({
+export const JoiSchema = Joi.object({
   '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
 {{#fieldList}}
   {{{ renderPropName propName }}}: {{{ propertyJoiType }}},

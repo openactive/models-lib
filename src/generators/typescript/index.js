@@ -276,14 +276,10 @@ class TypeScript extends Generator {
    *   would be QuantitativeValue (for `ageRange`), and the rootModel would be `Event`.
    */
   getJoiBaseType(prefixedTypeName, isExtension, model, rootModelPrefixedTypeName) {
-    // if (prefixedTypeName === rootModelPrefixedTypeName) {
-    // }
     const typeName = this.getPropNameFromFQP(prefixedTypeName);
-    if (typeName === this.getPropNameFromFQP(rootModelPrefixedTypeName)) {
-      /* Make this an absolute link to the root model. Joi models cannot be built recursively in the normal manner
-      otherwise you'll develop a situation akin to `const x = { field: x };` which has no clear value */
-      return "Joi.link('/')";
-    }
+    /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
+    Concept and vice versa) they cannot always directly reference each other */
+    const lazy = (schemaSymbol) => `Joi.lazy(() => ${schemaSymbol})`;
     switch (typeName) {
       case "Boolean":
         return "Joi.boolean()";
@@ -302,9 +298,10 @@ class TypeScript extends Generator {
       case "Text":
         return "Joi.string()";
       case "Duration":
-        return "Joi.string().isoDuration()";
+        return "Joi.string()"; // The below can be we used if Joi is upgraded to v17
+        // return "Joi.string().isoDuration()";
       case "Property":
-        return `oa.enums.${this.propertyEnumerationName}.JoiSchema`;
+        return lazy(`oa.enums.${this.propertyEnumerationName}.JoiSchema`);
       case "URL":
         return "Joi.string().uri()";
       case "null":
@@ -314,7 +311,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return `oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`;
+          return lazy(`oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -323,19 +320,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.enums.${this.convertToCamelCase(typeName)}.JoiSchema`
+              lazy(`schema.enums.${this.convertToCamelCase(typeName)}.JoiSchema`)
             );
           }
-          return `oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`;
+          return lazy(`oa.enums.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return `oa.${this.convertToCamelCase(typeName)}.JoiSchema`;
+          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.${this.convertToCamelCase(typeName)}.JoiSchema`
+              lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`)
             );
           }
-          return `oa.${this.convertToCamelCase(typeName)}.JoiSchema`;
+          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
