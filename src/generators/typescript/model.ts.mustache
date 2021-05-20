@@ -30,8 +30,6 @@ export type Type = {
 {{/fieldList}}
 }
 
-/* unfortunately, it must be given this generic type `ObjectSchema<any>` because these schemas can sometimes be
-recursively defined, which causes a type error due to potentially infinite nesting of generic params */
 /**
  * {{{ modelType }}} - Validation schema (w/ JOI)
 {{#classDoc}}
