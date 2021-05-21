@@ -7,6 +7,18 @@ const jsonld = require('jsonld');
 const Handlebars = require('handlebars');
 const axios = require('axios');
 
+/**
+ * @typedef {{
+ *   type?: string;
+ *   subClassOf?: string;
+ *   superClassOf?: string[];
+ *   [k: string]: any;
+ * }} Model Data for a model such as an `Event`, `ImageObject`, `Place`, etc.
+ *   The format is the same as in the openactive/data-models project e.g. https://github.com/openactive/data-models/blob/master/versions/2.x/models/Event.json.
+ *
+ * @typedef {{[type: string]: Model}} ModelsObj
+ */
+
 class Generator {
   constructor(dataModelDirectory, extensions) {
     // Returns the latest version of the models map
@@ -14,6 +26,7 @@ class Generator {
     this.extensions = extensions;
     this.cache = [];
 
+    /** @type {ModelsObj} */
     this.models = getModels();
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
@@ -35,6 +48,7 @@ class Generator {
     this.extensions = this.mutateExtensions(this.extensions);
 
     await this.loadExtensions(this.extensions);
+    this.setModelSuperClassOfs();
   }
 
   async setupHandlebars() {}
@@ -330,6 +344,10 @@ class Generator {
     }
   }
 
+  /**
+   * Load JSON-LD extensions (incl. Schema.org, OA Beta namespace, etc) and then augment the models (which at this
+   * point have only OA namespace-defined relations) with relations from the extensions.
+   */
   async loadExtensions(extensions) {
     let extensionData = {};
 
@@ -406,6 +424,65 @@ class Generator {
     }
 
     await this.fillAugmentedSubclasses();
+  }
+
+  /**
+   * For each model, find out which models it is a super-class of and set that into the models' `.superClassOf`
+   * field.
+   */
+  setModelSuperClassOfs() {
+    for (const [modelType, subModelType] of Generator.getModelSuperClasses(this.models)) {
+      if (!(modelType in this.models)) {
+        console.warn(`setModelSuperClassOfs() - cannot find parent model "${modelType}"`);
+        continue;
+      }
+      const model = this.models[modelType];
+      const superClassOf = Generator.getOrSetDefaultValue(model, 'superClassOf', () => []);
+      superClassOf.push(subModelType);
+    }
+  }
+
+  /**
+   * Get value from an object. If there is no value, set a default value and then return that.
+   *
+   * @template {object} TObj
+   * @template {keyof TObj} TKey
+   * @param {TObj} obj
+   * @param {TKey} key
+   * @param {() => TObj[TKey]} getDefaultFn
+   */
+  static getOrSetDefaultValue(obj, key, getDefaultFn) {
+    if (!(key in obj)) {
+      obj[key] = getDefaultFn();
+    }
+    return obj[key];
+  }
+
+  /**
+   * Generates a pair [parentModelType, childModelType] (e.g. `["Event", "ScheduledSession"]`)
+   * for each parent-child relation between models.
+   *
+   * @param {ModelsObj} models
+   */
+  static *getModelSuperClasses(models) {
+    for (const model of Object.values(models)) {
+      if (!model.subClassOf) {
+        continue;
+      }
+      const normalizedParentType = (() => {
+        // #FacilityUse -> FacilityUse
+        if (model.subClassOf.startsWith('#')) {
+          return model.subClassOf.slice(1);
+        }
+        // https://schema.org/Thing -> schema:Thing
+        const schemaUrlRegexResult = new RegExp('^https://schema.org/(.+)$').exec(model.subClassOf);
+        if (schemaUrlRegexResult) {
+          return `schema:${schemaUrlRegexResult[1]}`;
+        }
+        return model.subClassOf;
+      })();
+      yield [normalizedParentType, model.type];
+    }
   }
 
   storeNamespaces(context) {
