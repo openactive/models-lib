@@ -10,6 +10,7 @@ const axios = require('axios');
 /**
  * @typedef {{
  *   type?: string;
+ *   extension?: string;
  *   subClassOf?: string;
  *   superClassOf?: string[];
  *   [k: string]: any;
@@ -251,17 +252,18 @@ class Generator {
   /**
    * returns an array listing every inheritance route
    *
-   * @code createModelTree("schema:PaymentCard")
-   *        [ [ 'schema:PaymentCard',
-   *           'schema:PaymentMethod',
-   *           'schema:Enumeration',
-   *           'schema:Intangible',
-   *           'schema:Thing' ],
-   *          [ 'schema:PaymentCard',
-   *           'schema:FinancialProduct',
-   *           'schema:Service',
-   *           'schema:Intangible',
-   *           'schema:Thing' ] ]
+   * ```
+   * > createModelTree("schema:PaymentCard")
+   * [ [ 'schema:PaymentCard',
+   *    'schema:PaymentMethod',
+   *    'schema:Enumeration',
+   *    'schema:Intangible',
+   *    'schema:Thing' ],
+   *   [ 'schema:PaymentCard',
+   *    'schema:FinancialProduct',
+   *    'schema:Service',
+   *    'schema:Intangible',
+   *    'schema:Thing' ] ]
    * ```
    *
    * @param modelName
@@ -502,6 +504,19 @@ class Generator {
     return `${string[0].toLowerCase()}${string.slice(1)}`;
   }
 
+  /**
+   * @param {string} subClassOf
+   * @param {any} derivedFrom
+   * @param {Model} model
+   */
+  calculateInherits(subClassOf, derivedFrom, model) {
+    // Overwrite this in Generator child classes for languages whose generation uses inheritance
+    return null;
+  }
+
+  /**
+   * @param {Model} model
+   */
   createModelData(model, extensions) {
     console.log("Generating model ", model.type);
 
@@ -517,7 +532,7 @@ class Generator {
 
     let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model);
 
-    let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
+    const inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
     let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
@@ -543,7 +558,7 @@ class Generator {
        * e.g. threeDModel
        */
       classNameFirstLetterLowercased: Generator.lowercaseFirstLetter(className),
-      inherits: inherits,
+      inherits,
       /** e.g. schema:3DModel */
       modelType: model.type,
       /** e.g. 3DModel */
@@ -553,7 +568,9 @@ class Generator {
         hasBaseClass,
         model
       ),
-      fullFields: fullFields
+      fullFields: fullFields,
+      /** list of data for each sub-class of this model */
+      subClassList: this.createTableFromSubClassList(model),
     };
 
     return data;
@@ -713,6 +730,36 @@ class Generator {
           model
         )
       );
+  }
+
+  /**
+   * @param {Model} subClassModel
+   */
+  createSubClassListEntry(subClassModel) {
+    // Optionally overwrite this in a generator which uses the `subClassList`
+    return null;
+  }
+
+  /**
+   * @param {Model} model
+   */
+  createTableFromSubClassList(model) {
+    return (model.superClassOf ?? []).reduce((entries, subClassTypeName) => {
+      if (!(subClassTypeName in this.models)) {
+        console.warn(`createTableFromSubClassList() - cannot find subClass model "${subClassTypeName}"`);
+      } else {
+        const subClassModel = this.models[subClassTypeName];
+        entries.push(this.createSubClassListEntry(subClassModel));
+      }
+      return entries;
+    }, []);
+    // return (model.superClassOf ?? []).map((subClassTypeName) => {
+    //   if (!(subClassTypeName in this.models)) {
+    //     console.warn(`createTableFromSubClassList() - cannot find subClass model "${subClassTypeName}"`)
+    //     return null;
+    //   }
+    //   const subClassModel = this.models[subClassTypeName];
+    // }).filter(Boolean);
   }
 
   augmentWithExtension(extension) {

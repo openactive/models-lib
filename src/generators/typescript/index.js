@@ -30,10 +30,6 @@ class TypeScript extends Generator {
     });
   }
 
-  formatNamespace(parts) {
-    return parts.map(part => `::${part}`).join("");
-  }
-
   setupHandlebars() {
     Handlebars.registerHelper("renderPropName", function() {
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
@@ -166,6 +162,15 @@ class TypeScript extends Generator {
     }
   }
 
+  /**
+   * @param {'oa' | 'schema'} oaOrSchema
+   * @param {string} modelOrEnumTypeName
+   */
+  getTsBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName) {
+    return `${oaOrSchema}.${this.convertToCamelCase(modelOrEnumTypeName)}.OrSubClassType`;
+  }
+
+
   getTsBaseType(prefixedTypeName, isExtension, model) {
     const typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
@@ -188,7 +193,7 @@ class TypeScript extends Generator {
       case "Duration":
         return "string";
       case "Property":
-        return `oa.${this.propertyEnumerationName}.Type`;
+        return /*`oa.${this.propertyEnumerationName}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', this.propertyEnumerationName);
       case "URL":
         return "string";
       case "null":
@@ -198,7 +203,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return `oa.${this.convertToCamelCase(typeName)}.Type`;
+          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -207,19 +212,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.${this.convertToCamelCase(typeName)}.Type`
+              /*`schema.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('schema', typeName)
             );
           }
-          return `oa.${this.convertToCamelCase(typeName)}.Type`;
+          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return `oa.${this.convertToCamelCase(typeName)}.Type`;
+          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              `schema.${this.convertToCamelCase(typeName)}.Type`
+              /*`schema.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('schema', typeName)
             );
           }
-          return `oa.${this.convertToCamelCase(typeName)}.Type`;
+          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName);
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -254,6 +259,31 @@ class TypeScript extends Generator {
     }
   }
 
+  // /**
+  //  * @param {string} joiSchemaSymbol e.g. `oa.Property.JoiSchema`
+  //  */
+  // static joiLazyLink(joiSchemaSymbol) {
+  //   /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
+  //   Concept and vice versa) they cannot always directly reference each other */
+  //   return `Joi.lazy(() => ${joiSchemaSymbol})`;
+  // }
+
+  // /* e.g. An Event has `.subEvent`, which can be an Event. This means that it could also be a SessionSeries,
+  // ScheduledSession, etc.. for all of the Event sub-classes.
+  // If we just generate `subEvent: Event.JoiSchema`, this will not allow a ScheduledSession to be used.
+  // As we are using TypeScript's structural typing, this is best achieved by allowing for Event `.subEvent` to be
+  // either an Event or a SessionSeries or [etc..] */
+
+  /**
+   * @param {'oa' | 'schema'} oaOrSchema
+   * @param {string} modelOrEnumTypeName
+   */
+  getJoiBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName) {
+    /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
+    Concept and vice versa) they cannot always directly reference each other */
+    return `Joi.lazy(() => ${oaOrSchema}.${this.convertToCamelCase(modelOrEnumTypeName)}.OrSubClassJoiSchema)`;
+  }
+
   /**
    * @param {string} prefixedTypeName
    * @param {string} rootModelPrefixedTypeName Type of the root model e.g. `schema:Enumeration`
@@ -262,9 +292,9 @@ class TypeScript extends Generator {
    */
   getJoiBaseType(prefixedTypeName, isExtension, model, rootModelPrefixedTypeName) {
     const typeName = this.getPropNameFromFQP(prefixedTypeName);
-    /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
-    Concept and vice versa) they cannot always directly reference each other */
-    const lazy = (schemaSymbol) => `Joi.lazy(() => ${schemaSymbol})`;
+    // /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
+    // Concept and vice versa) they cannot always directly reference each other */
+    // const lazy = (schemaSymbol) => `Joi.lazy(() => ${schemaSymbol})`;
     switch (typeName) {
       case "Boolean":
         return "Joi.boolean()";
@@ -286,7 +316,8 @@ class TypeScript extends Generator {
         return "Joi.string()"; // The below can be we used if Joi is upgraded to v17
         // return "Joi.string().isoDuration()";
       case "Property":
-        return lazy(`oa.${this.propertyEnumerationName}.JoiSchema`);
+        return this.getJoiBaseTypeForModelOrEnum('oa', this.propertyEnumerationName);
+        // return lazy(`oa.${this.propertyEnumerationName}.JoiSchema`);
       case "URL":
         return "Joi.string().uri()";
       case "null":
@@ -298,7 +329,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -307,19 +338,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`)
+              /*lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('schema', typeName)
             );
           }
-          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName);
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`)
+              /*lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('schema', typeName)
             );
           }
-          return lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`);
+          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName);
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -389,6 +420,17 @@ class TypeScript extends Generator {
         ...obj
       };
     }
+  }
+
+  /**
+   * @param {import('../../generator').Model} subClassModel
+   */
+  createSubClassListEntry(subClassModel) {
+    const oaOrSchema = subClassModel.extension === 'schema' ? 'schema' : 'oa';
+    return {
+      subClassTsType: this.getTsBaseTypeForModelOrEnum(oaOrSchema, subClassModel.type),
+      subClassJoiType: this.getJoiBaseTypeForModelOrEnum(oaOrSchema, subClassModel.type),
+    };
   }
 
   /**
@@ -469,47 +511,48 @@ class TypeScript extends Generator {
     return types;
   }
 
-  calculateInherits(subClassOf, derivedFrom, model) {
-    // Prioritise subClassOf over derivedFrom
-    if (subClassOf) {
-      let subClassOfName = this.convertToCamelCase(
-        this.getPropNameFromFQP(subClassOf)
-      );
+  // calculateInherits(subClassOf, derivedFrom, model) {
+  //   return null;
+    // // Prioritise subClassOf over derivedFrom
+    // if (subClassOf) {
+    //   let subClassOfName = this.convertToCamelCase(
+    //     this.getPropNameFromFQP(subClassOf)
+    //   );
 
-      if (this.includedInSchema(subClassOf)) {
-        return `::OpenActive::Models::Schema::${subClassOfName}`;
-      }
+    //   if (this.includedInSchema(subClassOf)) {
+    //     return `::OpenActive::Models::Schema::${subClassOfName}`;
+    //   }
 
-      if (this.includedInSchema(model.type)) {
-        // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::Schema::${subClassOfName}`;
-      }
+    //   if (this.includedInSchema(model.type)) {
+    //     // If type is from schema.org, we override schema.org
+    //     return `::OpenActive::Models::Schema::${subClassOfName}`;
+    //   }
 
-      return `::OpenActive::Models::${subClassOfName}`;
-    }
+    //   return `::OpenActive::Models::${subClassOfName}`;
+    // }
 
-    if (derivedFrom) {
-      let derivedFromName = this.convertToCamelCase(
-        this.getPropNameFromFQP(derivedFrom)
-      );
+    // if (derivedFrom) {
+    //   let derivedFromName = this.convertToCamelCase(
+    //     this.getPropNameFromFQP(derivedFrom)
+    //   );
 
-      if (this.includedInSchema(derivedFrom)) {
-        return `::OpenActive::Models::Schema::${derivedFromName}`;
-      }
+    //   if (this.includedInSchema(derivedFrom)) {
+    //     return `::OpenActive::Models::Schema::${derivedFromName}`;
+    //   }
 
-      if (this.includedInSchema(model.type)) {
-        // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::Schema::${derivedFromName}`;
-      }
+    //   if (this.includedInSchema(model.type)) {
+    //     // If type is from schema.org, we override schema.org
+    //     return `::OpenActive::Models::Schema::${derivedFromName}`;
+    //   }
 
-      // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-      return `::OpenActive::JsonLdModel`;
-    }
+    //   // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
+    //   return `::OpenActive::JsonLdModel`;
+    // }
 
-    // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-    // throw new Error("No base class specified for: " + model.type);
-    return `::OpenActive::JsonLdModel`;
-  }
+    // // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
+    // // throw new Error("No base class specified for: " + model.type);
+    // return `::OpenActive::JsonLdModel`;
+  // }
 }
 
 module.exports = TypeScript;

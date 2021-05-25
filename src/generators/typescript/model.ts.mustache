@@ -28,7 +28,25 @@ export type Type = {
   {{/if }}
   {{{ renderPropName propName }}}?: {{{ propertyTsType }}};
 {{/fieldList}}
-}
+};
+
+/**
+ * {{{ modelType }}}
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ *
+ * This differs from {{{ modelType }}}.Type because it also allows for objects that have the type of a model that
+ * sub-classes this model. e.g. `Event.OrSubClassType` allows `Event`s as well as `ScheduledSession`s, `SessionSeries`,
+ * etc.
+ */
+export type OrSubClassType =
+  | Type
+  {{#each subClassList}}
+  | {{{ subClassTsType }}}
+  {{/each}}
+  ;
 
 /**
  * {{{ modelType }}} - Validation schema (w/ JOI)
@@ -43,6 +61,24 @@ export const JoiSchema = Joi.object({
   {{{ renderPropName propName }}}: {{{ propertyJoiType }}},
 {{/fieldList}}
 });
+
+/**
+ * {{{ modelType }}} - Validation schema (w/ JOI)
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ *
+ * This differs from {{{ modelType }}}.JoiSchema because it also allows for objects that have the type of a model that
+ * sub-classes this model. e.g. `Event.OrSubClassJoiSchema` allows `Event`s as well as `ScheduledSession`s,
+ * `SessionSeries`, etc.
+ */
+export const OrSubClassJoiSchema = Joi.alternatives().try([
+  JoiSchema,
+  {{#each subClassList}}
+  {{{ subClassJoiType }}},
+  {{/each}}
+]);
 
 /**
  * Runtime validator for {{{ modelType }}}.
