@@ -138,6 +138,9 @@ class TypeScript extends Generator {
     return this.genericGetFilename(thisEnum.enumType);
   }
 
+  /**
+   * @param {string} value
+   */
   convertToClassName(value) {
     // 3DModel is an invalid class name..
     value = value.replace(/^3/, "Three");
@@ -433,9 +436,10 @@ class TypeScript extends Generator {
    */
   createSubClassListEntry(subClassModel) {
     const oaOrSchema = subClassModel.extension === 'schema' ? 'schema' : 'oa';
+    const subClassModelTypeName = this.convertToClassName(this.getPropNameFromFQP(subClassModel.type));
     return {
-      subClassTsType: this.getTsBaseTypeForModelOrEnum(oaOrSchema, subClassModel.type, 'model'),
-      subClassJoiType: this.getJoiBaseTypeForModelOrEnum(oaOrSchema, subClassModel.type, 'model'),
+      subClassTsType: this.getTsBaseTypeForModelOrEnum(oaOrSchema, subClassModelTypeName, 'model'),
+      subClassJoiType: this.getJoiBaseTypeForModelOrEnum(oaOrSchema, subClassModelTypeName, 'model'),
     };
   }
 

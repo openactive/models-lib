@@ -1258,6 +1258,9 @@ class Generator {
     return firstList.concat(remainingList.sort());
   }
 
+  /**
+   * @param {string} str
+   */
   convertToCamelCase(str) {
     if (str === null || str === undefined) return null;
     return str.charAt(0).toUpperCase() + str.slice(1);
