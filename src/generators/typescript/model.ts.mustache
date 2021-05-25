@@ -105,6 +105,6 @@ export function validate(maybe{{{ className }}}: unknown): Type | OaValidationEr
     return new OaValidationError('{{{ className }}}', maybe{{{ className }}}, error);
   }
   /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
-  to have the right type. Therefore, we just cast it to `any`. */
-  return value as any;
+  to have the right type. Therefore, we just cast it to the right type. */
+  return value as Type;
 }
