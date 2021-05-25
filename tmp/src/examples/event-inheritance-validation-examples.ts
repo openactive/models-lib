@@ -14,5 +14,4 @@ const eventSeries = EventSeries.validate({
     }],
   }],
 });
-// FIXME this fails currently (TODO link to GH Issue)
 assert(!(eventSeries instanceof OaValidationError), util.inspect(eventSeries instanceof OaValidationError && eventSeries.validationError));
