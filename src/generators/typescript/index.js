@@ -199,7 +199,7 @@ class TypeScript extends Generator {
       case "Duration":
         return "string";
       case "Property":
-        return /*`oa.${this.propertyEnumerationName}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', this.propertyEnumerationName, 'enum');
+        return this.getTsBaseTypeForModelOrEnum('oa', this.propertyEnumerationName, 'enum');
       case "URL":
         return "string";
       case "null":
@@ -209,7 +209,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -218,19 +218,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              /*`schema.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('schema', typeName, 'enum')
+              this.getTsBaseTypeForModelOrEnum('schema', typeName, 'enum')
             );
           }
-          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              /*`schema.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('schema', typeName, 'model')
+              this.getTsBaseTypeForModelOrEnum('schema', typeName, 'model')
             );
           }
-          return /*`oa.${this.convertToCamelCase(typeName)}.Type`*/this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -265,21 +265,6 @@ class TypeScript extends Generator {
     }
   }
 
-  // /**
-  //  * @param {string} joiSchemaSymbol e.g. `oa.Property.JoiSchema`
-  //  */
-  // static joiLazyLink(joiSchemaSymbol) {
-  //   /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
-  //   Concept and vice versa) they cannot always directly reference each other */
-  //   return `Joi.lazy(() => ${joiSchemaSymbol})`;
-  // }
-
-  // /* e.g. An Event has `.subEvent`, which can be an Event. This means that it could also be a SessionSeries,
-  // ScheduledSession, etc.. for all of the Event sub-classes.
-  // If we just generate `subEvent: Event.JoiSchema`, this will not allow a ScheduledSession to be used.
-  // As we are using TypeScript's structural typing, this is best achieved by allowing for Event `.subEvent` to be
-  // either an Event or a SessionSeries or [etc..] */
-
   /**
    * @param {'oa' | 'schema'} oaOrSchema
    * @param {string} modelOrEnumTypeName Type name of the model/enum
@@ -301,9 +286,6 @@ class TypeScript extends Generator {
    */
   getJoiBaseType(prefixedTypeName, isExtension, model, rootModelPrefixedTypeName) {
     const typeName = this.getPropNameFromFQP(prefixedTypeName);
-    // /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
-    // Concept and vice versa) they cannot always directly reference each other */
-    // const lazy = (schemaSymbol) => `Joi.lazy(() => ${schemaSymbol})`;
     switch (typeName) {
       case "Boolean":
         return "Joi.boolean()";
@@ -326,7 +308,6 @@ class TypeScript extends Generator {
         // return "Joi.string().isoDuration()";
       case "Property":
         return this.getJoiBaseTypeForModelOrEnum('oa', this.propertyEnumerationName, 'enum');
-        // return lazy(`oa.${this.propertyEnumerationName}.JoiSchema`);
       case "URL":
         return "Joi.string().uri()";
       case "null":
@@ -338,7 +319,7 @@ class TypeScript extends Generator {
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -347,19 +328,19 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              /*lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'enum')
+              this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'enum')
             );
           }
-          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              /*lazy(`schema.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'model')
+              this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'model')
             );
           }
-          return /*lazy(`oa.${this.convertToCamelCase(typeName)}.JoiSchema`) */this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
