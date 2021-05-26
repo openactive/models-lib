@@ -27,7 +27,7 @@ export type Type = {
   {{/if }}
    */
   {{/if }}
-  {{{ renderPropName propName }}}?: {{{ propertyTsType }}};
+  {{{ renderMemberName memberName }}}?: {{{ propertyTsType }}}
 {{/fieldList}}
 };
 
@@ -59,7 +59,7 @@ export type OrSubClassType =
 export const JoiSchema = Joi.object({
   '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
 {{#fieldList}}
-  {{{ renderPropName propName }}}: {{{ propertyJoiType }}},
+  {{{ renderMemberName memberName }}}: {{{ propertyJoiType }}},
 {{/fieldList}}
 });
 

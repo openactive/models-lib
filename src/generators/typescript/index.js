@@ -34,6 +34,10 @@ class TypeScript extends Generator {
     Handlebars.registerHelper("renderPropName", function() {
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
     });
+    Handlebars.registerHelper("renderMemberName", function() {
+      // return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
+      return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.memberName) ? this.memberName : `'${this.memberName}'`);
+    });
   }
 
   async renderIndex(data) {
