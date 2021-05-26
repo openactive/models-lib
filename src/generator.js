@@ -1252,6 +1252,14 @@ class Generator {
     };
   }
 
+  /**
+   * For a given model, add in all the fields from its super-class models (i.e. its parents).
+   *
+   * @param {{[k: string]: any}} augFields A mutable accumulation of fields augmented so far.
+   * @param {Model} model
+   * @param {Models} models
+   * @param {any[]} notInSpec
+   */
   augmentWithParentFields(augFields, model, models, notInSpec) {
     if (model.fields) Object.keys(model.fields).forEach(function(field) { 
       if (!augFields[field] && !notInSpec.includes(field)) {
@@ -1259,6 +1267,8 @@ class Generator {
       }
     });
   
+    // TODO TODO TODO why is OrderItem.hasId false?
+    // TODO TODO TODO Add @context here?
     if (model.hasId && !augFields['@id']) {
       augFields['@id'] = {
           'fieldName': '@id',

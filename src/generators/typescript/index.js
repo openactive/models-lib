@@ -8,6 +8,13 @@ const Handlebars = require('handlebars');
  * @typedef {import('../../generator').PageContent} PageContent
  */
 
+/**
+ * @param {string} errorMsg
+ */
+function throwError(errorMsg) {
+  throw new Error(errorMsg);
+}
+
 class TypeScript extends Generator {
   mutateExtensions(extensions) {
     return {
@@ -92,12 +99,17 @@ class TypeScript extends Generator {
       const exampleFileBaseName = path.basename(example.file, ".json");
       const exampleFilePath = `/test/data-models-examples/${exampleFileBaseName}.spec.ts`;
       if (exampleFilePath in result) {
-        throw new Error(`There are multiple data model example files with the same name, "${exampleFileBaseName}"`);
+        throw new Error(`There are multiple data models example files with the same name, "${exampleFileBaseName}" ("${example.file}")`);
       }
+      const model = example.data?.items?.[0]?.data
+        ?? example.data;
+      const modelType = model['@type']
+        ?? throwError(`No @type found in data-models example file "${example.file}"`);
+      const modelSymbolName = this.convertToClassName(modelType);
       result[exampleFilePath] = await this.renderDataModelExampleTest({
         exampleFileName: example.file,
-        modelSymbolName: "Event",
-        exampleObject: "{ '@type': 'Event', name: 'hi' }",
+        modelSymbolName,
+        exampleObject: JSON.stringify(model),
       });
     }
     return result;

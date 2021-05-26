@@ -12,6 +12,7 @@ import { oa, schema } from '..';
  */
 export type Type = {
   '@type': '{{{ modelTypePropName }}}';
+  '@context'?: string | string[];
 {{#fieldList}}
   {{#if description }}
   /**
