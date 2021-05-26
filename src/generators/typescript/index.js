@@ -40,7 +40,7 @@ class TypeScript extends Generator {
   async renderDataModelExampleTest(data) {
     this.dataModelExampleTestTemplate =
       this.dataModelExampleTestTemplate ||
-      (await this.loadTemplate(__dirname + "/data-model-example-test.ts.mustache"));
+      (await this.loadTemplate(__dirname + "/data-models-example-test.ts.mustache"));
     
     return this.dataModelExampleTestTemplate(data);
   }
@@ -90,7 +90,7 @@ class TypeScript extends Generator {
     for (const example of examples) {
       // sessionseries_example_1.json -> sessionseries_example_1
       const exampleFileBaseName = path.basename(example.file, ".json");
-      const exampleFilePath = `/test/data-models-examples/${exampleFileBaseName}.ts`;
+      const exampleFilePath = `/test/data-models-examples/${exampleFileBaseName}.spec.ts`;
       if (exampleFilePath in result) {
         throw new Error(`There are multiple data model example files with the same name, "${exampleFileBaseName}"`);
       }
