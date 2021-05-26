@@ -13,6 +13,7 @@ const axios = require('axios');
  *   extension?: string;
  *   subClassOf?: string;
  *   superClassOf?: string[];
+ *   imperativeConfiguration?: {[k: string]: any};
  *   [k: string]: any;
  * }} Model Data for a model such as an `Event`, `ImageObject`, `Place`, etc.
  *   The format is the same as in the openactive/data-models project e.g. https://github.com/openactive/data-models/blob/master/versions/2.x/models/Event.json.
@@ -1253,6 +1254,27 @@ class Generator {
   }
 
   /**
+   * Can this model have an `@id` field. Even if it can only in some cases (according to `imperativeConfiguration`),
+   * this will return true.
+   *
+   * @param {Model} model
+   */
+  static canModelHaveId(model) {
+    if (model.hasId) {
+      return true;
+    }
+    // if any of its imperative configurations support ID, then this model can have an ID field.
+    if (model.imperativeConfiguration) {
+      for (const imperativeConfiguration of Object.values(model.imperativeConfiguration)) {
+        if (imperativeConfiguration.hasId) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * For a given model, add in all the fields from its super-class models (i.e. its parents).
    *
    * @param {{[k: string]: any}} augFields A mutable accumulation of fields augmented so far.
@@ -1266,17 +1288,16 @@ class Generator {
         augFields[field] = model.fields[field];
       }
     });
-  
-    // TODO TODO TODO why is OrderItem.hasId false?
-    // TODO TODO TODO Add @context here?
-    if (model.hasId && !augFields['@id']) {
+
+    // TODO add `@context` here?
+    if (!augFields['@id'] && Generator.canModelHaveId(model)) {
       augFields['@id'] = {
           'fieldName': '@id',
           'requiredType': model['idFormat'] || 'http://schema.org/url',
           'description': ['A unique url based identifier for the record'],
           'example': ''
       };
-      if (model.hasId && model.sampleId) {
+      if (model.sampleId) {
         augFields['@id']['example'] = model['sampleId'] + '12345';
       }
     }
