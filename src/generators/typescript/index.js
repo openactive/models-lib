@@ -103,7 +103,7 @@ class TypeScript extends Generator {
       }
       const model = example.data?.items?.[0]?.data
         ?? example.data;
-      const modelType = model['@type']
+      const modelType = model["@type"]
         ?? throwError(`No @type found in data-models example file "${example.file}"`);
       const modelSymbolName = this.convertToClassName(modelType);
       result[exampleFilePath] = await this.renderDataModelExampleTest({
@@ -429,6 +429,10 @@ class TypeScript extends Generator {
 
     if (["oa", "schema"].includes(this.getPrefix(memberName))) {
       memberName = this.getPropNameFromFQP(memberName);
+    }
+
+    if (model.type === 'CourseInstance' && field.memberName === 'beta:course') {
+      console.log('hmmm');
     }
 
     const obj = {

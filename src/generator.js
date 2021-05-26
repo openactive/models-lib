@@ -1253,26 +1253,26 @@ class Generator {
     };
   }
 
-  /**
-   * Can this model have an `@id` field. Even if it can only in some cases (according to `imperativeConfiguration`),
-   * this will return true.
-   *
-   * @param {Model} model
-   */
-  static canModelHaveId(model) {
-    if (model.hasId) {
-      return true;
-    }
-    // if any of its imperative configurations support ID, then this model can have an ID field.
-    if (model.imperativeConfiguration) {
-      for (const imperativeConfiguration of Object.values(model.imperativeConfiguration)) {
-        if (imperativeConfiguration.hasId) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
+  // /**
+  //  * Can this model have an `@id` field. Even if it can only in some cases (according to `imperativeConfiguration`),
+  //  * this will return true.
+  //  *
+  //  * @param {Model} model
+  //  */
+  // static canModelHaveId(model) {
+  //   if (model.hasId) {
+  //     return true;
+  //   }
+  //   // if any of its imperative configurations support ID, then this model can have an ID field.
+  //   if (model.imperativeConfiguration) {
+  //     for (const imperativeConfiguration of Object.values(model.imperativeConfiguration)) {
+  //       if (imperativeConfiguration.hasId) {
+  //         return true;
+  //       }
+  //     }
+  //   }
+  //   return false;
+  // }
 
   /**
    * For a given model, add in all the fields from its super-class models (i.e. its parents).
@@ -1290,10 +1290,12 @@ class Generator {
     });
 
     // TODO add `@context` here?
-    if (!augFields['@id'] && Generator.canModelHaveId(model)) {
+    // if (!augFields['@id'] && Generator.canModelHaveId(model)) {
+    if (!augFields['@id']) {
       augFields['@id'] = {
           'fieldName': '@id',
-          'requiredType': model['idFormat'] || 'http://schema.org/url',
+          // 'requiredType': model['idFormat'] || 'http://schema.org/url',
+          'requiredType': model['idFormat'] || 'http://schema.org/URL',
           'description': ['A unique url based identifier for the record'],
           'example': ''
       };
