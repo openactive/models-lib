@@ -1,5 +1,12 @@
+const { getExamplesWithContent } = require('@openactive/data-models');
+const path = require('path');
 const Generator = require('../../generator');
 const Handlebars = require('handlebars');
+
+/**
+ * @typedef {import('../../generator').Model} Model
+ * @typedef {import('../../generator').PageContent} PageContent
+ */
 
 class TypeScript extends Generator {
   mutateExtensions(extensions) {
@@ -16,20 +23,6 @@ class TypeScript extends Generator {
     return true;
   }
 
-  // using inplace of standard namespace
-  getBasicNamespace(prop) {
-    if (this.includedInSchema(prop)) {
-      return ["schema"];
-    }
-    return [];
-  }
-
-  getNamespaceParts(prop, type) {
-    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(name => {
-      return this.snakeToCanonicalName(name);
-    });
-  }
-
   setupHandlebars() {
     Handlebars.registerHelper("renderPropName", function() {
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
@@ -42,6 +35,14 @@ class TypeScript extends Generator {
       (await this.loadTemplate(__dirname + "/index.ts.mustache"));
 
     return this.indexTemplate(data);
+  }
+
+  async renderDataModelExampleTest(data) {
+    this.dataModelExampleTestTemplate =
+      this.dataModelExampleTestTemplate ||
+      (await this.loadTemplate(__dirname + "/data-model-example-test.ts.mustache"));
+    
+    return this.dataModelExampleTestTemplate(data);
   }
 
   /**
@@ -74,6 +75,32 @@ class TypeScript extends Generator {
     };
 
     return response;
+  }
+
+  /**
+   * Use the example data-models to contrive tests which ensure that TS types and JOI schema
+   * pass for these examples.
+   *
+   * @returns {Promise<PageContent>}
+   */
+  async createTestFiles() {
+    const examples = await getExamplesWithContent("2.0");
+    /** @type {PageContent} */
+    const result = {};
+    for (const example of examples) {
+      // sessionseries_example_1.json -> sessionseries_example_1
+      const exampleFileBaseName = path.basename(example.file, ".json");
+      const exampleFilePath = `/test/data-models-examples/${exampleFileBaseName}.ts`;
+      if (exampleFilePath in result) {
+        throw new Error(`There are multiple data model example files with the same name, "${exampleFileBaseName}"`);
+      }
+      result[exampleFilePath] = await this.renderDataModelExampleTest({
+        exampleFileName: example.file,
+        modelSymbolName: "Event",
+        exampleObject: "{ '@type': 'Event', name: 'hi' }",
+      });
+    }
+    return result;
   }
 
   // TODO: Refactor this to remove string hacks, it is currently dependent on the strings in
@@ -413,7 +440,7 @@ class TypeScript extends Generator {
   }
 
   /**
-   * @param {import('../../generator').Model} subClassModel
+   * @param {Model} subClassModel
    */
   createSubClassListEntry(subClassModel) {
     const oaOrSchema = subClassModel.extension === 'schema' ? 'schema' : 'oa';

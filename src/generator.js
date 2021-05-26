@@ -18,6 +18,16 @@ const axios = require('axios');
  *   The format is the same as in the openactive/data-models project e.g. https://github.com/openactive/data-models/blob/master/versions/2.x/models/Event.json.
  *
  * @typedef {{[type: string]: Model}} ModelsObj
+ *
+ * @typedef {{ [filePath: string]: string}} PageContent Specification of a set of generated files to create.
+ *   The key is the path to the file and the value is the file contents.
+ *   e.g.
+ *   ```js
+ *   {
+ *     '/oa/index.ts': "export * as Event from './Event';\n" // ...etc
+ *   }
+ *   ```
+ *   The file path must start with a leading slash and must be relative to the generated output directory.
  */
 
 class Generator {
@@ -128,6 +138,15 @@ class Generator {
     return true;
   }
 
+  /**
+   * Overwrite this in order to generate unit test files.
+   *
+   * @returns {Promise<PageContent | null>}
+   */
+  async createTestFiles() {
+    return null;
+  }
+
   async generateModelClassFiles() {
     await this.initialize();
     await this.cleanModelDirs();
@@ -185,6 +204,13 @@ class Generator {
       let pageContent = await this.createIndexFiles();
 
       await this.savePage(pageContent);
+    }
+    // Generate test files (optional)
+    {
+      const pageContent = await this.createTestFiles();
+      if (pageContent) {
+        await this.savePage(pageContent);
+      }
     }
   }
 
@@ -319,6 +345,9 @@ class Generator {
     return _createModelTree(modelName);
   }
 
+  /**
+   * @param {PageContent} pageContent
+   */
   async savePage(pageContent) {
     for (let filename of Object.keys(pageContent)) {
       let fileContent = pageContent[filename];

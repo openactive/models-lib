@@ -1,0 +1,14 @@
+// This file was generated using the {{{ exampleFileName }}} example from @openactive/data-models
+import { expect } from 'chai';
+import { oa, OaValidationError } from '../..';
+
+describe('data-models example - {{{ exampleFileName }}}', () => {
+  /* Because the tests are also checked by `tsc`, this declaration acts as a test to ensure that the generated type
+  correctly identifies this valid example */
+  const example: oa.{{{ modelSymbolName }}}.Type = {{{ exampleObject }}};
+
+  it('should validate correctly', () => {
+    const result = oa.{{{ modelSymbolName }}}.validate(example);
+    expect(result).to.not.be.an.instanceof(OaValidationError);
+  });
+});
