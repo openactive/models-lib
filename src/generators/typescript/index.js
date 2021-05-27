@@ -113,7 +113,7 @@ class TypeScript extends Generator {
       result[exampleFilePath] = await this.renderDataModelExampleTest({
         exampleFileName: example.file,
         modelSymbolName,
-        exampleObject: JSON.stringify(model),
+        exampleObject: JSON.stringify(model, null, 2),
       });
     }
     return result;
