@@ -6,7 +6,7 @@
   "typings": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node lib/examples/general-validation-examples.js"
+    "test": "tsc && mocha"
   },
   "author": "",
   "license": "ISC",
