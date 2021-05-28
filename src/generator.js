@@ -878,8 +878,12 @@ class Generator {
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
-            model.extensionFields.push(field.fieldName);
-            model.fields[field.fieldName] = { ...field };
+            /* Don't overwrite an OA field with a beta field. A field can exist in beta and OA both while it is
+            migrating from beta to OA. */
+            if (!(field.extensionPrefix === 'beta' && field.fieldName in model.fields)) {
+              model.extensionFields.push(field.fieldName);
+              model.fields[field.fieldName] = { ...field };
+            }
           } else {
             let isSchema = /^schema:/.test(prop);
             let msg =
@@ -1284,6 +1288,9 @@ class Generator {
    */
   augmentWithParentFields(augFields, model, models, notInSpec) {
     if (model.fields) Object.keys(model.fields).forEach(function(field) { 
+      // if (model.type === 'Course' && field.includes('logo')) {
+      //   console.log(':o');
+      // }
       if (!augFields[field] && !notInSpec.includes(field)) {
         augFields[field] = model.fields[field];
       }
