@@ -1193,7 +1193,6 @@ class Generator {
    * @returns {Model[]}
    */
   getParentAndDerivedModels(model) {
-    // TODO TODO TODO This sometimes returns [undefined]
     const parentModels = Generator.getModelSubClassesOf(model).map((superClass) => {
       const modelType = Generator.getModelTypeFromSubClassOf(superClass);
       if (!(model.type in this.models)) {
@@ -1453,7 +1452,8 @@ class Generator {
       }
     });
 
-    // TODO add `@context` here?
+    /* TODO add `@context` here? Presently, the TypeScript generator (which uses this augmentWithParentFields
+    functionality) just manually puts `@context` into each of its models */
     // if (!augFields['@id'] && Generator.canModelHaveId(model)) {
     if (!augFields['@id']) {
       augFields['@id'] = {
