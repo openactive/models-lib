@@ -13,6 +13,7 @@ const { throwError } = require('./utils/throw');
  *   type?: string;
  *   extension?: string;
  *   subClassOf?: string;
+ *   subClassesOf?: [string];
  *   derivedFrom?: string;
  *   superClassOf?: string[];
  *   imperativeConfiguration?: {[k: string]: any};
@@ -467,7 +468,8 @@ class Generator {
   setModelSuperClassOfs() {
     for (const [modelType, subModelType] of Generator.getModelSuperClasses(this.models)) {
       if (!(modelType in this.models)) {
-        console.warn(`setModelSuperClassOfs() - cannot find parent model "${modelType}"`);
+        // Many schema and cores skos models are missing. This is fine. If you want to see which ones, uncomment below.
+        // console.warn(`setModelSuperClassOfs() - cannot find parent model "${modelType}"`);
         continue;
       }
       const model = this.models[modelType];
@@ -500,22 +502,11 @@ class Generator {
    */
   static *getModelSuperClasses(models) {
     for (const model of Object.values(models)) {
-      if (!model.subClassOf) {
-        continue;
+      const subClassesOf = Generator.getModelSubClassesOf(model);
+      for (const subClassOf of subClassesOf) {
+        const normalizedParentType = Generator.getModelTypeFromSubClassOf(subClassOf);
+        yield [normalizedParentType, model.type];
       }
-      const normalizedParentType = (() => {
-        // #FacilityUse -> FacilityUse
-        if (model.subClassOf.startsWith('#')) {
-          return model.subClassOf.slice(1);
-        }
-        // https://schema.org/Thing -> schema:Thing
-        const schemaUrlRegexResult = new RegExp('^https://schema.org/(.+)$').exec(model.subClassOf);
-        if (schemaUrlRegexResult) {
-          return `schema:${schemaUrlRegexResult[1]}`;
-        }
-        return model.subClassOf;
-      })();
-      yield [normalizedParentType, model.type];
     }
   }
 
@@ -1058,6 +1049,7 @@ class Generator {
     return "[#" + issueNumber + "](" + url + ")";
   }
 
+  // TODO should this be updated to use getModelTypeFromSubClassOf(..) and to return an array of parent models?
   /**
    * @param {Model} model
    */
@@ -1077,19 +1069,64 @@ class Generator {
   }
 
   /**
+   * @param {string} modelSubClassOf a string like "#Event", "schema:CreativeWork" or
+   *   "https://schema.org/DigitalDocument"
+   * @returns {string} a string which can be used to get the super class model from
+   *   this.models e.g.
+   *   ```js
+   *   const model = this.models[this.getModelTypeFromSubClassOf('#Event')];
+   *   ```
+   */
+  static getModelTypeFromSubClassOf(modelSubClassOf) {
+    // #FacilityUse -> FacilityUse
+    if (modelSubClassOf.startsWith('#')) {
+      return modelSubClassOf.slice(1);
+    }
+    // https://schema.org/Thing -> schema:Thing, https://pending.schema.org/EventSeries -> schema:EventSeries
+    const schemaUrlRegexResult = new RegExp('^https://([^.]+.)*schema.org/(.+)$').exec(modelSubClassOf);
+    if (schemaUrlRegexResult) {
+      return `schema:${schemaUrlRegexResult[2]}`;
+    }
+    return modelSubClassOf;
+  }
+
+  /**
    * @param {Model} model
    */
-  getParentOrDerivedModel(model) {
-    const parent = this.getParentModel(model);
-    if (parent) { return parent; }
+  static getModelSubClassesOf(model) {
+    if (model.subClassesOf) { return model.subClassesOf; }
+    if (model.subClassOf) { return [model.subClassOf]; }
+    return [];
+  }
+
+  /**
+   * @param {Model} model
+   * @returns {Model[]}
+   */
+  getParentAndDerivedModels(model) {
+    // TODO TODO TODO This sometimes returns [undefined]
+    const parentModels = Generator.getModelSubClassesOf(model).map((superClass) => {
+      const modelType = Generator.getModelTypeFromSubClassOf(superClass);
+      if (!(model.type in this.models)) {
+        // We don't mind if a schema.org model is missing
+        if (modelType.startsWith('schema')) {
+          return null;
+        }
+        throw new Error(`Parent model ${modelType} (parent to ${model.type}) not found`);
+      }
+      return this.models[modelType];
+    }).filter(Boolean);
+    // const parent = this.getParentModel(model);
+    // if (parent) { return parent; }
     // otherwise, use derivedFrom model, if its a schema.org model
     if (model.derivedFrom && this.includedInSchema(model.derivedFrom)) {
       // https://schema.org/QuantitativeValue -> QuantitativeValue
       const schemaModelBaseName = (new URL(model.derivedFrom)).pathname.slice(1);
       const prefixedSchemaModelName = `schema:${schemaModelBaseName}`;
-      return this.models[prefixedSchemaModelName]
-        ?? throwError(`Models does not include ${model.type}.${model.derivedFrom}, "${prefixedSchemaModelName}"`);
+      parentModels.push(this.models[prefixedSchemaModelName]
+        ?? throwError(`Models does not include ${model.type}.${model.derivedFrom}, "${prefixedSchemaModelName}"`));
     }
+    return parentModels;
   }
 
   getBaseSchemaClass(model) {
@@ -1308,12 +1345,19 @@ class Generator {
   /**
    * For a given model, add in all the fields from its super-class models (i.e. its parents).
    *
-   * @param {{[k: string]: any}} augFields A mutable accumulation of fields augmented so far.
+   * @param {{[k: string]: any}} augFields An accumulation of fields augmented so far.
+   *   ! This will be mutated.
    * @param {Model} model
    * @param {Models} models
    * @param {any[]} notInSpec
+   * @param {Set<string>} modelTypesLookedAtSoFar A cache of model types looked at so far. Because models can have
+   *   multiple inheritance, it's possible for a model's parent trees to intersect. It would be wasteful to augment
+   *   a model with parent fields more than once.
+   *   ! This will be mutated.
    */
-  augmentWithParentFields(augFields, model, models, notInSpec) {
+  augmentWithParentFields(augFields, model, models, notInSpec, modelTypesLookedAtSoFar=new Set()) {
+    // Ignore if this parent model has already been looked at.
+    if (modelTypesLookedAtSoFar.has(model.type)) { return augFields; }
     if (model.fields) Object.keys(model.fields).forEach(function(field) { 
       if (!augFields[field] && !notInSpec.includes(field)) {
         augFields[field] = model.fields[field];
@@ -1334,12 +1378,14 @@ class Generator {
       }
     }
   
-    const parentModel = this.getParentOrDerivedModel(model);
-    if (parentModel) {
-      return this.augmentWithParentFields(augFields, parentModel, models, notInSpec.concat(model.notInSpec));
-    } else {
-      return augFields;
+    modelTypesLookedAtSoFar.add(model.type);
+    const newNotInSpec = notInSpec.concat(model.notInSpec);
+    const parentModels = this.getParentAndDerivedModels(model);
+    // Recurse through parents
+    for (const parentModel of parentModels) {
+      this.augmentWithParentFields(augFields, parentModel, models, newNotInSpec, modelTypesLookedAtSoFar);
     }
+    return augFields;
   }
 
   sortWithIdAndTypeOnTop(arr) {
