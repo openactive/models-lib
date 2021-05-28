@@ -878,12 +878,18 @@ class Generator {
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
-            /* Don't overwrite an OA field with a beta field. A field can exist in beta and OA both while it is
-            migrating from beta to OA. */
-            if (!(field.extensionPrefix === 'beta' && field.fieldName in model.fields)) {
-              model.extensionFields.push(field.fieldName);
-              model.fields[field.fieldName] = { ...field };
+            if (field.fieldName in model.fields) {
+              throw new Error(`field "${field.fieldName}" (extension: ${field.extensionPrefix}) already exists in model "${model.type}".`);
             }
+            model.extensionFields.push(field.fieldName);
+            model.fields[field.fieldName] = { ...field };
+            // /* Don't overwrite an OA field with a beta field. A field can temporarily exist in beta and OA both while
+            // it is migrating from beta to OA. */
+            // const dontOverwriteExistingField = field.extensionPrefix === 'beta' && field.fieldName in model.fields;
+            // if (!dontOverwriteExistingField) {
+            //   model.extensionFields.push(field.fieldName);
+            //   model.fields[field.fieldName] = { ...field };
+            // }
           } else {
             let isSchema = /^schema:/.test(prop);
             let msg =
