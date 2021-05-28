@@ -58,6 +58,7 @@ export type OrSubClassType =
  */
 export const JoiSchema = Joi.object({
   '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
+  '@context': Joi.alternatives().try([Joi.string(), Joi.array().items(Joi.string())]),
 {{#fieldList}}
   {{{ renderMemberName memberName }}}: {{{ propertyJoiType }}},
 {{/fieldList}}

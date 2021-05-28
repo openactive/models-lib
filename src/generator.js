@@ -532,6 +532,7 @@ class Generator {
 
   getAllPrimitiveAndEnumTypesSet() {
     const schemaPrefixAndUrl = (baseTypeName) => [`schema:${baseTypeName}`, `https://schema.org/${baseTypeName}`];
+    // TODO deduce these datatypes by loading them from schema.org itself. This will be future-proof
     return new Set([
       // All the sub-classes (recursively) of schema.org/DataType
       ...schemaPrefixAndUrl('DataType'),
