@@ -10,6 +10,12 @@ const { throwError } = require('./utils/throw');
 
 /**
  * @typedef {{
+ *   fieldName?: string;
+ *   allowReferencing?: string;
+ *   [k: string]: any;
+ * }} Field Field within a model.
+ *
+ * @typedef {{
  *   type?: string;
  *   extension?: string;
  *   subClassOf?: string;
@@ -17,6 +23,7 @@ const { throwError } = require('./utils/throw');
  *   derivedFrom?: string;
  *   superClassOf?: string[];
  *   imperativeConfiguration?: {[k: string]: any};
+ *   fields?: {[k: string]: Field};
  *   [k: string]: any;
  * }} Model Data for a model such as an `Event`, `ImageObject`, `Place`, etc.
  *   The format is the same as in the openactive/data-models project e.g. https://github.com/openactive/data-models/blob/master/versions/2.x/models/Event.json.
@@ -64,6 +71,7 @@ class Generator {
 
     await this.loadExtensions(this.extensions);
     this.setModelSuperClassOfs();
+    this.setImplicitAllowReferencings();
   }
 
   async setupHandlebars() {}
@@ -506,6 +514,86 @@ class Generator {
       for (const subClassOf of subClassesOf) {
         const normalizedParentType = Generator.getModelTypeFromSubClassOf(subClassOf);
         yield [normalizedParentType, model.type];
+      }
+    }
+  }
+
+  /**
+   * @param {Field} field
+   */
+  static getAllFieldAllowedTypes(field) {
+    return []
+      .concat(field.alternativeTypes)
+      .concat(field.requiredType)
+      .concat(field.alternativeModels)
+      .concat(field.model)
+      .filter(Boolean);
+  }
+
+  getAllPrimitiveAndEnumTypesSet() {
+    const schemaPrefixAndUrl = (baseTypeName) => [`schema:${baseTypeName}`, `https://schema.org/${baseTypeName}`];
+    return new Set([
+      // All the sub-classes (recursively) of schema.org/DataType
+      ...schemaPrefixAndUrl('DataType'),
+      ...schemaPrefixAndUrl('Number'),
+      ...schemaPrefixAndUrl('Float'),
+      ...schemaPrefixAndUrl('Integer'),
+      ...schemaPrefixAndUrl('DateTime'),
+      ...schemaPrefixAndUrl('Time'),
+      ...schemaPrefixAndUrl('Boolean'),
+      ...schemaPrefixAndUrl('True'),
+      ...schemaPrefixAndUrl('False'),
+      ...schemaPrefixAndUrl('Date'),
+      ...schemaPrefixAndUrl('Text'),
+      ...schemaPrefixAndUrl('URL'),
+      ...schemaPrefixAndUrl('CssSelectorType'),
+      ...schemaPrefixAndUrl('PronounceableText'),
+      ...schemaPrefixAndUrl('XPathType'),
+      // Enums
+      ...(Object.entries(this.enumMap).map(([enumName, theEnum]) => {
+        const nonPrefixedName = (() => {
+          // test:TestOpenBookingFlowEnumeration -> test:, TestOpenBookingFlowEnumeration
+          const regex = /^([^:]+:)?([^:]+)/;
+          const match = regex.exec(enumName);
+          if (!match) {
+            throw new Error(`Enum "${enumName}" surprisingly does not match the expected pattern "${regex}"`);
+          }
+          return match[2];
+        })();
+        // const label = theEnum.label || enumName;
+        // e.g. https://openactive.io/BrokerType
+        const fullEnumType = `${theEnum.namespace}${nonPrefixedName}`;
+        return fullEnumType;
+      }))
+    ]);
+  }
+
+  /**
+   * Schema.org always allows other models to be referenced by their ID.
+   *
+   * So, we update all schema.org models to add `allowReferencing: true` for all fields that link to non-primitive
+   * models.
+   */
+  setImplicitAllowReferencings() {
+    const primitiveTypesAndEnums = this.getAllPrimitiveAndEnumTypesSet();
+    for (const model of Object.values(this.models)) {
+      // only consider schema.org models
+      if (model.extension !== 'schema') {
+        continue;
+      }
+      for (const field of Object.values(model.fields || {})) {
+        // don't bother - it's already set
+        if (field.allowReferencing) {
+          continue;
+        }
+        const fieldTypes = Generator.getAllFieldAllowedTypes(field);
+        const hasAllPrimitiveTypesOrEnums = fieldTypes.every((type) =>
+          primitiveTypesAndEnums.has(type));
+        if (hasAllPrimitiveTypesOrEnums) {
+          continue;
+        }
+        field.allowReferencing = true;
+        field.allowReferencingTrueBecauseSchemaAlwaysImplicitlyAllowsReferencing = true;
       }
     }
   }
