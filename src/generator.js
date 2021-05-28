@@ -532,7 +532,7 @@ class Generator {
 
   getAllPrimitiveAndEnumTypesSet() {
     const schemaPrefixAndUrl = (baseTypeName) => [`schema:${baseTypeName}`, `https://schema.org/${baseTypeName}`];
-    // TODO deduce these datatypes by loading them from schema.org itself. This will be future-proof
+    // TODO deduce these datatypes by loading them from schema.org itself. This would be future-proof
     return new Set([
       // All the sub-classes (recursively) of schema.org/DataType
       ...schemaPrefixAndUrl('DataType'),
@@ -865,13 +865,6 @@ class Generator {
       }
       return entries;
     }, []);
-    // return (model.superClassOf ?? []).map((subClassTypeName) => {
-    //   if (!(subClassTypeName in this.models)) {
-    //     console.warn(`createTableFromSubClassList() - cannot find subClass model "${subClassTypeName}"`)
-    //     return null;
-    //   }
-    //   const subClassModel = this.models[subClassTypeName];
-    // }).filter(Boolean);
   }
 
   augmentWithExtension(extension) {
@@ -965,13 +958,6 @@ class Generator {
             }
             model.extensionFields.push(field.fieldName);
             model.fields[field.fieldName] = { ...field };
-            // /* Don't overwrite an OA field with a beta field. A field can temporarily exist in beta and OA both while
-            // it is migrating from beta to OA. */
-            // const dontOverwriteExistingField = field.extensionPrefix === 'beta' && field.fieldName in model.fields;
-            // if (!dontOverwriteExistingField) {
-            //   model.extensionFields.push(field.fieldName);
-            //   model.fields[field.fieldName] = { ...field };
-            // }
           } else {
             let isSchema = /^schema:/.test(prop);
             let msg =
@@ -1204,8 +1190,6 @@ class Generator {
       }
       return this.models[modelType];
     }).filter(Boolean);
-    // const parent = this.getParentModel(model);
-    // if (parent) { return parent; }
     // otherwise, use derivedFrom model, if its a schema.org model
     if (model.derivedFrom && this.includedInSchema(model.derivedFrom)) {
       // https://schema.org/QuantitativeValue -> QuantitativeValue
@@ -1409,27 +1393,6 @@ class Generator {
     };
   }
 
-  // /**
-  //  * Can this model have an `@id` field. Even if it can only in some cases (according to `imperativeConfiguration`),
-  //  * this will return true.
-  //  *
-  //  * @param {Model} model
-  //  */
-  // static canModelHaveId(model) {
-  //   if (model.hasId) {
-  //     return true;
-  //   }
-  //   // if any of its imperative configurations support ID, then this model can have an ID field.
-  //   if (model.imperativeConfiguration) {
-  //     for (const imperativeConfiguration of Object.values(model.imperativeConfiguration)) {
-  //       if (imperativeConfiguration.hasId) {
-  //         return true;
-  //       }
-  //     }
-  //   }
-  //   return false;
-  // }
-
   /**
    * For a given model, add in all the fields from its super-class models (i.e. its parents).
    *
@@ -1454,7 +1417,6 @@ class Generator {
 
     /* TODO add `@context` here? Presently, the TypeScript generator (which uses this augmentWithParentFields
     functionality) just manually puts `@context` into each of its models */
-    // if (!augFields['@id'] && Generator.canModelHaveId(model)) {
     if (!augFields['@id']) {
       augFields['@id'] = {
           'fieldName': '@id',

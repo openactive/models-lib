@@ -27,7 +27,7 @@ export type Type = {
   {{/if }}
    */
   {{/if }}
-  {{{ renderMemberName memberName }}}?: {{{ propertyTsType }}}
+  {{{ renderMemberName }}}?: {{{ propertyTsType }}}
 {{/fieldList}}
 };
 
@@ -60,7 +60,7 @@ export const JoiSchema = Joi.object({
   '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
   '@context': Joi.alternatives().try([Joi.string(), Joi.array().items(Joi.string())]),
 {{#fieldList}}
-  {{{ renderMemberName memberName }}}: {{{ propertyJoiType }}},
+  {{{ renderMemberName }}}: {{{ propertyJoiType }}},
 {{/fieldList}}
 });
 

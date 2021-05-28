@@ -29,7 +29,6 @@ class TypeScript extends Generator {
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
     });
     Handlebars.registerHelper("renderMemberName", function() {
-      // return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.memberName) ? this.memberName : `'${this.memberName}'`);
     });
   }
@@ -543,48 +542,6 @@ class TypeScript extends Generator {
     return types;
   }
 
-  // calculateInherits(subClassOf, derivedFrom, model) {
-  //   return null;
-    // // Prioritise subClassOf over derivedFrom
-    // if (subClassOf) {
-    //   let subClassOfName = this.convertToCamelCase(
-    //     this.getPropNameFromFQP(subClassOf)
-    //   );
-
-    //   if (this.includedInSchema(subClassOf)) {
-    //     return `::OpenActive::Models::Schema::${subClassOfName}`;
-    //   }
-
-    //   if (this.includedInSchema(model.type)) {
-    //     // If type is from schema.org, we override schema.org
-    //     return `::OpenActive::Models::Schema::${subClassOfName}`;
-    //   }
-
-    //   return `::OpenActive::Models::${subClassOfName}`;
-    // }
-
-    // if (derivedFrom) {
-    //   let derivedFromName = this.convertToCamelCase(
-    //     this.getPropNameFromFQP(derivedFrom)
-    //   );
-
-    //   if (this.includedInSchema(derivedFrom)) {
-    //     return `::OpenActive::Models::Schema::${derivedFromName}`;
-    //   }
-
-    //   if (this.includedInSchema(model.type)) {
-    //     // If type is from schema.org, we override schema.org
-    //     return `::OpenActive::Models::Schema::${derivedFromName}`;
-    //   }
-
-    //   // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-    //   return `::OpenActive::JsonLdModel`;
-    // }
-
-    // // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-    // // throw new Error("No base class specified for: " + model.type);
-    // return `::OpenActive::JsonLdModel`;
-  // }
 }
 
 module.exports = TypeScript;
