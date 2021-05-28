@@ -7,20 +7,36 @@ This library works for both JavaScript and TypeScript developers, making it easi
 Example:
 
 ```ts
-import * as Joi from 'joi';
-import { OaValidationResult } from '@openactive/models-ts';
-// OpenActive types live at /lib/oa
-import { Event, RequiredStatusType } from '@openactive/models-ts/lib/oa';
-// Schema.org types live at /lib/schema
-import { DayOfWeek, ImageObject } from '@openactive/models-ts/lib/schema';
+import Joi from 'joi';
+import {
+  OaValidationError,
+  Course,
+  Eventt,
+  RequiredStatusType,
+  EventtOrSubClass,
+  validateRequiredStatusType,
+  RequiredStatusTypeJoiSchema,
+  EventtOrSubClassJoiSchema,
+  schema,
+} from '@openactive/models-ts';
 
-// TypeScript type lives at `.Type`
-const myRequiredStatusType: RequiredStatusType.Type = 'https://openactive.io/Required';
-const myNotRequiredStatusType: RequiredStatusType.Type = 'somethingelse.com'; // this will raise a TS error
+// TypeScript types (for OpenActive models) are found with the model/enum name
+const myRequiredStatusType: RequiredStatusType = 'https://openactive.io/Required';
+const myNotRequiredStatusType: RequiredStatusType = 'somethingelse.com'; // this will raise a TS error
+const maybeCourse: Course = { '@type': 'Course', /* ... */ };
+// Event is an exception - it's labelled `Eventt` because `Event` is not a permissable type name in TypeScript.
+const myEvent: Eventt = { '@type': 'Event', /* ... */ };
+// TypeScript types for Schema.org models are in the schema namespace
+const dayOfWeek: schema.DayOfWeek = 'https://schema.org/Sunday';
 
-// Validator lives at `.validate(..)`. Use this to validate unknown values.
-const maybeRequiredStatusType = RequiredStatusType.validate(someData);
-if (maybeRequiredStatusType instanceof OaValidationResult) {
+// Each model has an additional type which can also accept an object which conforms to a sub-class of the model
+// e.g. `EventOrSubClass` can be used to annotate Events or ScheduledSessions (which sub-class Event)
+// Access these types at `{ model/enum name }OrSubClass`.
+const scheduledSession: EventtOrSubClass = { '@type': 'ScheduledSession', /* ... */ };
+
+// Validator lives at `validate{ model/enum name}` e.g. `validateRequiredStatusType`
+const maybeRequiredStatusType = validateRequiredStatusType(/* some data */);
+if (maybeRequiredStatusType instanceof OaValidationError) {
   // The data did not conform to the RequiredStatusType type.
   // From this point on, `maybeRequiredStatusType` will have type `OaValidationError`
   const error = maybeRequiredStatusType;
@@ -30,24 +46,22 @@ if (maybeRequiredStatusType instanceof OaValidationResult) {
   // From this point on, `maybeRequiredStatusType` will have type `RequiredStatusType.Type`
   const requiredStatusType = maybeRequiredStatusType;
 }
+// Again, validators for Schema.org models are in the schema namespace
+const maybeImageObject = schema.validateImageObject(/* some data */);
 
-// JOI Schema lives at `.JoiSchema`
+// JOI Schema lives at `{ model/enum name }JoiSchema`, for OpenActive models, and `schema.{ model/enum name }JoiSchema` for Schema.org models.
 const compositeJoiSchema = Joi.object({
   somethingElse: Joi.string(),
-  requiredStatusType: RequiredStatusType.JoiSchema,
+  requiredStatusType: RequiredStatusTypeJoiSchema,
 });
 
-// A few more type examples
-const event: Event.Type = {
-  '@type': 'Event',
-  name: 'myEvent',
-};
-const dayOfWeek: DayOfWeek.Type = 'https://schema.org/Sunday';
-const imageObject: ImageObject.Type = {
-  '@type': 'ImageObject',
-  url: 'https://example.com/image.jpg',
-};
+// Each model has an additional JOI schema which can also validate an object which conforms to a sub-class of the model
+// e.g. `EventtOrSubClassJoiSchema` can be used to annotate Events or SessionSeries (which sub-classes Event)
+// Access these JOI schemas at `{ model/enum name}OrSubClassJoiSchema`.
+const sessionSeries = EventtOrSubClassJoiSchema.validate({ '@type': 'SessionSeries', /* ... */ });
 ```
+
+Find some more extensive example usage in `src/test/data-model-examples`.
 
 ## Using Types in a JavaScript Project
 
@@ -85,7 +99,7 @@ Here's how:
     It is highly recommended that you use `"strict": true` in your `compilerOptions`, which improves TypeScript's
     ability to catch issues before they happen live. However, if you do this, you will have to make sure to annotate
     every function in your project.
-4. Annotate your functions with type signatures using JSDoc.
+4. Annotate your functions and variables with type signatures using JSDoc.
 
     e.g.
 
@@ -108,6 +122,28 @@ Here's how:
     (Note: you will often not need to annotate return values, which TypeScript can infer. You can see what TypeScript
     has inferred by hovering over the function in VSCode).
 5. Run `npx tsc` to check your files. Ensure this happens frequently by including it in your CI scripts.
+
+Some examples of using `@openactive/models-ts` with JSDoc:
+
+```js
+/** @type {import('@openactive/models-ts').RequiredStatusType} */
+const myRequiredStatusType = 'https://openactive.io/Required';
+/** @type {import('@openactive/models-ts').schema.ImageObject} */
+const myImageObject = { '@type': 'ImageObject', /* ... */ };
+
+// You can use `@typedef` aliases in order to not have to type the whole `import('@openactive/models-ts')...` bit each time:
+/**
+ * @typedef {import('@openactive/models-ts').Course} Course
+ */
+
+// And here the `@typedef` alias is being used:
+/**
+ * @param {Course}
+ */
+function doSomethingToCourse(course) {
+  // ..
+}
+```
 
 ## Contributing
 
