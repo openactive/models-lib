@@ -6,12 +6,14 @@ const isobject = require('isobject');
 const jsonld = require('jsonld');
 const Handlebars = require('handlebars');
 const axios = require('axios');
+const { throwError } = require('./utils/throw');
 
 /**
  * @typedef {{
  *   type?: string;
  *   extension?: string;
  *   subClassOf?: string;
+ *   derivedFrom?: string;
  *   superClassOf?: string[];
  *   imperativeConfiguration?: {[k: string]: any};
  *   [k: string]: any;
@@ -1056,6 +1058,9 @@ class Generator {
     return "[#" + issueNumber + "](" + url + ")";
   }
 
+  /**
+   * @param {Model} model
+   */
   getParentModel(model) {
     let subClassOf = model.subClassOf;
     if (!subClassOf) return;
@@ -1068,6 +1073,22 @@ class Generator {
       return this.models[subClassOf];
     } else {
       return false;
+    }
+  }
+
+  /**
+   * @param {Model} model
+   */
+  getParentOrDerivedModel(model) {
+    const parent = this.getParentModel(model);
+    if (parent) { return parent; }
+    // otherwise, use derivedFrom model, if its a schema.org model
+    if (model.derivedFrom && this.includedInSchema(model.derivedFrom)) {
+      // https://schema.org/QuantitativeValue -> QuantitativeValue
+      const schemaModelBaseName = (new URL(model.derivedFrom)).pathname.slice(1);
+      const prefixedSchemaModelName = `schema:${schemaModelBaseName}`;
+      return this.models[prefixedSchemaModelName]
+        ?? throwError(`Models does not include ${model.type}.${model.derivedFrom}, "${prefixedSchemaModelName}"`);
     }
   }
 
@@ -1294,9 +1315,6 @@ class Generator {
    */
   augmentWithParentFields(augFields, model, models, notInSpec) {
     if (model.fields) Object.keys(model.fields).forEach(function(field) { 
-      // if (model.type === 'Course' && field.includes('logo')) {
-      //   console.log(':o');
-      // }
       if (!augFields[field] && !notInSpec.includes(field)) {
         augFields[field] = model.fields[field];
       }
@@ -1307,7 +1325,6 @@ class Generator {
     if (!augFields['@id']) {
       augFields['@id'] = {
           'fieldName': '@id',
-          // 'requiredType': model['idFormat'] || 'http://schema.org/url',
           'requiredType': model['idFormat'] || 'http://schema.org/URL',
           'description': ['A unique url based identifier for the record'],
           'example': ''
@@ -1317,7 +1334,7 @@ class Generator {
       }
     }
   
-    var parentModel = this.getParentModel(model, models);
+    const parentModel = this.getParentOrDerivedModel(model);
     if (parentModel) {
       return this.augmentWithParentFields(augFields, parentModel, models, notInSpec.concat(model.notInSpec));
     } else {

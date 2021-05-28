@@ -2,18 +2,12 @@ const { getExamplesWithContent } = require('@openactive/data-models');
 const path = require('path');
 const Generator = require('../../generator');
 const Handlebars = require('handlebars');
+const { throwError } = require('../../utils/throw');
 
 /**
  * @typedef {import('../../generator').Model} Model
  * @typedef {import('../../generator').PageContent} PageContent
  */
-
-/**
- * @param {string} errorMsg
- */
-function throwError(errorMsg) {
-  throw new Error(errorMsg);
-}
 
 class TypeScript extends Generator {
   mutateExtensions(extensions) {
