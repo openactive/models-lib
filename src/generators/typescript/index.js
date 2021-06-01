@@ -25,9 +25,6 @@ class TypeScript extends Generator {
   }
 
   setupHandlebars() {
-    Handlebars.registerHelper("renderPropName", function() {
-      return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
-    });
     Handlebars.registerHelper("renderMemberName", function() {
       return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.memberName) ? this.memberName : `'${this.memberName}'`);
     });
@@ -158,12 +155,10 @@ class TypeScript extends Generator {
    */
   genericGetFilename(type) {
     if (this.includedInSchema(type)) {
-      return (
-        "/schema/" + this.getPropNameFromFQP(type) + ".ts"
-      );
+      return `/schema/${this.getPropNameFromFQP(type)}.ts`;
     }
 
-    return "/oa/" + this.getPropNameFromFQP(type) + ".ts";
+    return `/oa/${this.getPropNameFromFQP(type)}.ts`;
   }
 
   getModelFilename(model) {
@@ -178,6 +173,8 @@ class TypeScript extends Generator {
    * @param {string} value
    */
   convertToClassName(value) {
+    // A special case is made for `Event`, which is a reserved type in TypeScript.
+    if (value === 'Event') { return 'Event_'; }
     // 3DModel is an invalid class name..
     value = value.replace(/^3/, "Three");
 
@@ -207,9 +204,12 @@ class TypeScript extends Generator {
    * @param {'model' | 'enum'} modelOrEnum
    */
   getTsBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName, modelOrEnum) {
+    // Schema.org types are in the schema. namespace
+    const prefix = `${oaOrSchema}.`;
+    const baseName = this.convertToClassName(modelOrEnumTypeName);
     // enums don't have OrSubClassType as there is (as of yet!) no sub-class logic for enums in models-lib.
-    const tsTypeSymbol = modelOrEnum === 'model' ? 'OrSubClassType' : 'Type';
-    return `${oaOrSchema}.${this.convertToCamelCase(modelOrEnumTypeName)}.${tsTypeSymbol}`;
+    const suffix = modelOrEnum === 'model' ? 'OrSubClass' : '';
+    return `${prefix}${baseName}${suffix}`;
   }
 
 
@@ -307,11 +307,14 @@ class TypeScript extends Generator {
    * @param {'model' | 'enum'} modelOrEnum
    */
   getJoiBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName, modelOrEnum) {
+    // Schema.org types are in the schema. namespace
+    const prefix = `${oaOrSchema}.`;
+    const baseName = this.convertToClassName(modelOrEnumTypeName);
     // enums don't have OrSubClassJoiSchema as there is (as of yet!) no sub-class logic for enums in models-lib.
-    const joiSchemaSymbol = modelOrEnum === 'model' ? 'OrSubClassJoiSchema' : 'JoiSchema';
+    const suffix = modelOrEnum === 'model' ? 'OrSubClassJoiSchema' : 'JoiSchema';
     /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
     Concept and vice versa) they cannot always directly reference each other */
-    return `Joi.lazy(() => ${oaOrSchema}.${this.convertToCamelCase(modelOrEnumTypeName)}.${joiSchemaSymbol})`;
+    return `Joi.lazy(() => ${prefix}${baseName}${suffix})`;
   }
 
   /**

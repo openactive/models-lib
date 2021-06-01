@@ -1,7 +1,8 @@
 // This file was generated
 import * as Joi from 'joi';
 import { OaValidationError } from '../oaValidationError';
-import { oa, schema } from '..';
+import * as oa from '../oa';
+import * as schema from '../schema';
 
 /**
  * {{modelType}}
@@ -10,7 +11,7 @@ import { oa, schema } from '..';
  * {{{ . }}}
 {{/classDoc}}
  */
-export type Type = {
+export type {{{ className }}} = {
   '@type': '{{{ modelTypePropName }}}';
   '@context'?: string | string[];
 {{#fieldList}}
@@ -27,7 +28,7 @@ export type Type = {
   {{/if }}
    */
   {{/if }}
-  {{{ renderMemberName }}}?: {{{ propertyTsType }}}
+  {{{ renderMemberName }}}?: {{{ propertyTsType }}};
 {{/fieldList}}
 };
 
@@ -38,12 +39,12 @@ export type Type = {
  * {{{ . }}}
 {{/classDoc}}
  *
- * This differs from {{{ modelType }}}.Type because it also allows for objects that have the type of a model that
- * sub-classes this model. e.g. `Event.OrSubClassType` allows `Event`s as well as `ScheduledSession`s, `SessionSeries`,
+ * This differs from {{{ className }}} because it also allows for objects that have the type of a model that
+ * sub-classes this model. e.g. `Event_OrSubClass` allows `Event`s as well as `ScheduledSession`s, `SessionSeries`,
  * etc.
  */
-export type OrSubClassType =
-  | Type
+export type {{{ className }}}OrSubClass =
+  | {{{ className }}}
   {{#each subClassList}}
   | {{{ subClassTsType }}}
   {{/each}}
@@ -56,7 +57,7 @@ export type OrSubClassType =
  * {{{ . }}}
 {{/classDoc}}
  */
-export const JoiSchema = Joi.object({
+export const {{{ className }}}JoiSchema = Joi.object({
   '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
   '@context': Joi.alternatives().try([Joi.string(), Joi.array().items(Joi.string())]),
 {{#fieldList}}
@@ -71,12 +72,12 @@ export const JoiSchema = Joi.object({
  * {{{ . }}}
 {{/classDoc}}
  *
- * This differs from {{{ modelType }}}.JoiSchema because it also allows for objects that have the type of a model that
+ * This differs from {{{ className }}}JoiSchema because it also allows for objects that have the type of a model that
  * sub-classes this model. e.g. `Event.OrSubClassJoiSchema` allows `Event`s as well as `ScheduledSession`s,
  * `SessionSeries`, etc.
  */
-export const OrSubClassJoiSchema = Joi.alternatives().try([
-  JoiSchema,
+export const {{{ className }}}OrSubClassJoiSchema = Joi.alternatives().try([
+  {{{ className }}}JoiSchema,
   {{#each subClassList}}
   {{{ subClassJoiType }}},
   {{/each}}
@@ -97,16 +98,16 @@ export const OrSubClassJoiSchema = Joi.alternatives().try([
  *   const error = maybe{{{ className }}};
  *   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
  * }
- * // From this point on, `maybe{{{ className }}}` will have type `{{{ className }}}.Type`
+ * // From this point on, `maybe{{{ className }}}` will have type `{{{ className }}}`
  * const {{{ classNameFirstLetterLowercased }}} = maybe{{{ className }}};
  * ```
  */
-export function validate(maybe{{{ className }}}: unknown): Type | OaValidationError {
-  const { value, error } = JoiSchema.validate(maybe{{{ className }}});
+export function validate{{{ className }}}(maybe{{{ className }}}: unknown): {{{ className }}} | OaValidationError {
+  const { value, error } = {{{ className }}}JoiSchema.validate(maybe{{{ className }}});
   if (error) {
     return new OaValidationError('{{{ className }}}', maybe{{{ className }}}, error);
   }
   /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
   to have the right type. Therefore, we just cast it to the right type. */
-  return value as Type;
+  return value as {{{ className }}};
 }

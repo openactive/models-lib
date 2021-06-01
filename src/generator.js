@@ -371,7 +371,7 @@ class Generator {
       try {
         await fs.access(dir, fsConstants.R_OK);
       } catch (_e) {
-        await fs.mkdir(dir);
+        await fs.mkdir(dir, {recursive:true});
       }
 
       await fs
