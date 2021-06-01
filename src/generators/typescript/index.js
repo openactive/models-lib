@@ -1,5 +1,13 @@
+const { getExamplesWithContent } = require('@openactive/data-models');
+const path = require('path');
 const Generator = require('../../generator');
 const Handlebars = require('handlebars');
+const { throwError } = require('../../utils/throw');
+
+/**
+ * @typedef {import('../../generator').Model} Model
+ * @typedef {import('../../generator').PageContent} PageContent
+ */
 
 class TypeScript extends Generator {
   mutateExtensions(extensions) {
@@ -16,49 +24,51 @@ class TypeScript extends Generator {
     return true;
   }
 
-  // using inplace of standard namespace
-  getBasicNamespace(prop) {
-    if (this.includedInSchema(prop)) {
-      return ["schema"];
-    }
-    return [];
-  }
-
-  getNamespaceParts(prop, type) {
-    return ["OpenActive", type, ...this.getBasicNamespace(prop)].map(name => {
-      return this.snakeToCanonicalName(name);
-    });
-  }
-
-  formatNamespace(parts) {
-    return parts.map(part => `::${part}`).join("");
-  }
-
   setupHandlebars() {
-    Handlebars.registerHelper("renderPropName", function() {
-      return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.propName) ? this.propName : `'${this.propName}'`);
+    Handlebars.registerHelper("renderMemberName", function() {
+      return new Handlebars.SafeString(/^[A-Za-z0-9]*$/.test(this.memberName) ? this.memberName : `'${this.memberName}'`);
     });
   }
 
   async renderIndex(data) {
     this.indexTemplate =
       this.indexTemplate ||
-      (await this.loadTemplate(__dirname + "/index.js.mustache"));
+      (await this.loadTemplate(__dirname + "/index.ts.mustache"));
 
     return this.indexTemplate(data);
+  }
+
+  async renderDataModelExampleTest(data) {
+    this.dataModelExampleTestTemplate =
+      this.dataModelExampleTestTemplate ||
+      (await this.loadTemplate(__dirname + "/data-models-example-test.ts.mustache"));
+    
+    return this.dataModelExampleTestTemplate(data);
+  }
+
+  /**
+   * @param {string} typeName
+   */
+  filterModel(typeName, model) {
+    /* EventStatusType is erroneously made into a model as well as an enum. Because the TS generator puts enums and
+    models into the same directory, this causes issues */
+    if (typeName === 'schema:EventStatusType') {
+      return false;
+    }
+    return true;
   }
 
   async renderModel(data) {
     this.modelTemplate =
       this.modelTemplate ||
-      (await this.loadTemplate(__dirname + "/model.js.mustache"));
+      (await this.loadTemplate(__dirname + "/model.ts.mustache"));
 
     return this.modelTemplate(data);
   }
 
   async renderEnum(data) {
     this.enumTemplate = this.enumTemplate || {
-      main: await this.loadTemplate(__dirname + "/enum.js.mustache")
+      main: await this.loadTemplate(__dirname + "/enum.ts.mustache")
     };
 
     let response = {
@@ -68,31 +78,71 @@ class TypeScript extends Generator {
     return response;
   }
 
+  /**
+   * Use the example data-models to contrive tests which ensure that TS types and JOI schema
+   * pass for these examples.
+   *
+   * @returns {Promise<PageContent>}
+   */
+  async createTestFiles() {
+    const examples = await getExamplesWithContent("2.0");
+    /** @type {PageContent} */
+    const result = {};
+    for (const example of examples) {
+      // sessionseries_example_1.json -> sessionseries_example_1
+      const exampleFileBaseName = path.basename(example.file, ".json");
+      const exampleFilePath = `/test/data-models-examples/${exampleFileBaseName}.spec.ts`;
+      if (exampleFilePath in result) {
+        throw new Error(`There are multiple data models example files with the same name, "${exampleFileBaseName}" ("${example.file}")`);
+      }
+      const model = example.data?.items?.[0]?.data
+        ?? example.data;
+      const modelType = model["@type"]
+        ?? throwError(`No @type found in data-models example file "${example.file}"`);
+      const modelSymbolName = this.convertToClassName(modelType);
+      result[exampleFilePath] = await this.renderDataModelExampleTest({
+        exampleFileName: example.file,
+        modelSymbolName,
+        exampleObject: JSON.stringify(model, null, 2),
+      });
+    }
+    return result;
+  }
+
   // TODO: Refactor this to remove string hacks, it is currently dependent on the strings in
   // getDirs, getModelFilename and getEnumFilename
   async createIndexFiles() {
-    const getRequireList = (files, dir, prefix) => {
+    /**
+     * @param {string[]} filePaths
+     * @param {RegExp} matchFileRegex A regex which 1). matches files that we're concerned with and 2). captures the
+     *   name of the model/enum from the file path in its FIRST capture group.
+     */
+    const getRequireList = (filePaths, matchFileRegex) => {
       const list = [];
-      for (const file of files) {
-        if (file.indexOf(prefix) === 0) {
-          const typeName = file.substring(prefix.length, file.length - '.js'.length);
+      for (const filePath of filePaths) {
+        const match = matchFileRegex.exec(filePath);
+        if (match) {
+          const typeName = match[1];
           list.push({
-            name: this.convertToClassName(typeName),
-            filename: dir + typeName,
+            typeSymbolName: this.convertToClassName(typeName),
+            typeName,
           });
         }
       }
       return list;
     };
-    const getData = (files, modelPrefix, enumPrefix) => {
+    /**
+     * @param {string[]} files
+     * @param {RegExp} modelRegex
+     */
+    const getData = (files, matchFileRegex) => {
       return {
-        modelsList: getRequireList(files, './models/', modelPrefix),
-        enumsList: getRequireList(files, './enums/', enumPrefix),
-      }
+        types: getRequireList(files, matchFileRegex),
+      };
     };
     return {
-      "/oa/index.js": await this.renderIndex(getData(this.generatedFiles, '/oa/models/', '/oa/enums/' )),
-      "/schema/index.js": await this.renderIndex(getData(this.generatedFiles, '/schema/models/', '/schema/enums/')),
+      "/oa/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/oa/([^/]+).ts$"))),
+      "/schema/index.ts": await this.renderIndex(getData(this.generatedFiles, new RegExp("^/schema/([^/]+).ts$"))),
     };
   }
 
@@ -100,27 +150,31 @@ class TypeScript extends Generator {
     return ["schema/", "oa/"];
   }
 
-  getModelFilename(model) {
-    if (this.includedInSchema(model.type)) {
-      return (
-        "/schema/models/" + this.getPropNameFromFQP(model.type) + ".js"
-      );
+  /**
+   * @param {string} type
+   */
+  genericGetFilename(type) {
+    if (this.includedInSchema(type)) {
+      return `/schema/${this.getPropNameFromFQP(type)}.ts`;
     }
 
-    return "/oa/models/" + this.getPropNameFromFQP(model.type) + ".js";
+    return `/oa/${this.getPropNameFromFQP(type)}.ts`;
+  }
+
+  getModelFilename(model) {
+    return this.genericGetFilename(model.type);
   }
 
   getEnumFilename(thisEnum) {
-    if (this.includedInSchema(thisEnum.enumType)) {
-      return (
-        "/schema/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".js"
-      );
-    }
-
-    return "/oa/enums/" + this.getPropNameFromFQP(thisEnum.enumType) + ".js";
+    return this.genericGetFilename(thisEnum.enumType);
   }
 
+  /**
+   * @param {string} value
+   */
   convertToClassName(value) {
+    // A special case is made for `Event`, which is a reserved type in TypeScript.
+    if (value === 'Event') { return 'Event_'; }
     // 3DModel is an invalid class name..
     value = value.replace(/^3/, "Three");
 
@@ -131,52 +185,67 @@ class TypeScript extends Generator {
     return value;
   }
 
-  getLangType(fullyQualifiedType, isExtension, field) {
-    let baseType = this.getValidationBaseType(
+  getTsType(fullyQualifiedType, isExtension, field) {
+    const baseType = this.getTsBaseType(
       fullyQualifiedType,
       isExtension,
       field
     );
     if (this.isArray(fullyQualifiedType)) {
-      return `s.array(${baseType})`;
+      return `${baseType}[]`;
     } else {
       return baseType;
     }
   }
 
-  getValidationBaseType(prefixedTypeName, isExtension, model) {
-    let typeName = this.getPropNameFromFQP(prefixedTypeName);
+  /**
+   * @param {'oa' | 'schema'} oaOrSchema
+   * @param {string} modelOrEnumTypeName
+   * @param {'model' | 'enum'} modelOrEnum
+   */
+  getTsBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName, modelOrEnum) {
+    // Schema.org types are in the schema. namespace
+    const prefix = `${oaOrSchema}.`;
+    const baseName = this.convertToClassName(modelOrEnumTypeName);
+    // enums don't have OrSubClassType as there is (as of yet!) no sub-class logic for enums in models-lib.
+    const suffix = modelOrEnum === 'model' ? 'OrSubClass' : '';
+    return `${prefix}${baseName}${suffix}`;
+  }
+
+
+  getTsBaseType(prefixedTypeName, isExtension, model) {
+    const typeName = this.getPropNameFromFQP(prefixedTypeName);
     switch (typeName) {
       case "Boolean":
-        return "s.boolean";
-      case "Date": // TODO: Find better way of representing Date
-        return "s.string";
+        return "boolean";
+      case "Date":
+        return "string";
       case "DateTime":
-        return "s.isoDateTimeString";
+        return "string";
       case "Time":
-        return "s.string";
+        return "string";
       case "Integer":
-        return "s.nonNegativeInt";
+        return "number";
       case "Float":
-        return "s.nonNegativeFloat";
+        return "number";
       case "Number":
-        return "s.nonNegativeFloat";
+        return "number";
       case "Text":
-        return "s.string";
+        return "string";
       case "Duration":
-        return "s.string";
+        return "string";
       case "Property":
-        return `oa.enums.${this.propertyEnumerationName}`;
+        return this.getTsBaseTypeForModelOrEnum('oa', this.propertyEnumerationName, 'enum');
       case "URL":
-        return "s.urlString";
+        return "string";
       case "null":
-        return "s.null";
+        return "null";
       default:
         let compactedTypeName = this.getCompacted(prefixedTypeName);
         let extension = this.extensions[model.extensionPrefix];
 
         if (this.enumMap[typeName] && extension && extension.preferOA) {
-          return "schema.enums." + this.convertToCamelCase(typeName);
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.enumMap[compactedTypeName]) {
           let extension = this.extensions[model.extensionPrefix];
           if (extension && extension.preferOA && this.enumMap[typeName]) {
@@ -185,19 +254,132 @@ class TypeScript extends Generator {
 
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              "schema.enums." + this.convertToCamelCase(typeName)
+              this.getTsBaseTypeForModelOrEnum('schema', typeName, 'enum')
             );
           }
-          return "oa.enums." + this.convertToCamelCase(typeName);
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'enum');
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return "oa." + this.convertToCamelCase(typeName);
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return (
-              "schema." + this.convertToCamelCase(typeName)
+              this.getTsBaseTypeForModelOrEnum('schema', typeName, 'model')
             );
           }
-          return "oa." + this.convertToCamelCase(typeName);
+          return this.getTsBaseTypeForModelOrEnum('oa', typeName, 'model');
+        } else if (/^schema:/.test(model.memberName)) {
+          console.info(
+            `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
+          );
+          return; // nothing to return here
+        } else {
+          throw new Error(
+            "Unrecognised type or enum referenced: " +
+              typeName +
+              ", " +
+              compactedTypeName
+          );
+        }
+    }
+  }
+
+  /**
+   * @param {string} fullyQualifiedType
+   * @param {string} rootModelPrefixedTypeName
+   */
+  getJoiType(fullyQualifiedType, isExtension, field, rootModelPrefixedTypeName) {
+    const baseType = this.getJoiBaseType(
+      fullyQualifiedType,
+      isExtension,
+      field,
+      rootModelPrefixedTypeName,
+    );
+    if (this.isArray(fullyQualifiedType)) {
+      return `Joi.array().items(${baseType})`;
+    } else {
+      return baseType;
+    }
+  }
+
+  /**
+   * @param {'oa' | 'schema'} oaOrSchema
+   * @param {string} modelOrEnumTypeName Type name of the model/enum
+   * @param {'model' | 'enum'} modelOrEnum
+   */
+  getJoiBaseTypeForModelOrEnum(oaOrSchema, modelOrEnumTypeName, modelOrEnum) {
+    // Schema.org types are in the schema. namespace
+    const prefix = `${oaOrSchema}.`;
+    const baseName = this.convertToClassName(modelOrEnumTypeName);
+    // enums don't have OrSubClassJoiSchema as there is (as of yet!) no sub-class logic for enums in models-lib.
+    const suffix = modelOrEnum === 'model' ? 'OrSubClassJoiSchema' : 'JoiSchema';
+    /* Joi Schemas must be linked to lazily because there is a lot of mutual recursion (e.g. Enumeration refers to
+    Concept and vice versa) they cannot always directly reference each other */
+    return `Joi.lazy(() => ${prefix}${baseName}${suffix})`;
+  }
+
+  /**
+   * @param {string} prefixedTypeName
+   * @param {string} rootModelPrefixedTypeName Type of the root model e.g. `schema:Enumeration`
+   *   If this is getting the Joi base type for, say, the `ageRange` property within `Event`, the model itself
+   *   would be QuantitativeValue (for `ageRange`), and the rootModel would be `Event`.
+   */
+  getJoiBaseType(prefixedTypeName, isExtension, model, rootModelPrefixedTypeName) {
+    const typeName = this.getPropNameFromFQP(prefixedTypeName);
+    switch (typeName) {
+      case "Boolean":
+        return "Joi.boolean()";
+      case "Date":
+        return "Joi.string().isoDate()";
+      case "DateTime":
+        return "Joi.string().isoDate()";
+      case "Time":
+        return "Joi.string()";
+      case "Integer":
+        return "Joi.number().integer()";
+      case "Float":
+        return "Joi.number()";
+      case "Number":
+        return "Joi.number()";
+      case "Text":
+        return "Joi.string()";
+      case "Duration":
+        return "Joi.string()"; // The below can be we used if Joi is upgraded to v17
+        // return "Joi.string().isoDuration()";
+      case "Property":
+        return this.getJoiBaseTypeForModelOrEnum('oa', this.propertyEnumerationName, 'enum');
+      case "URL":
+        return "Joi.string().uri()";
+      case "null":
+        /* TODO what does it mean for this to be null? This will create an erroneous Joi Schema if exercised, but I
+        have not seen it exercised at all - LW. */
+        throw new Error('An explicit `null` cannot be specified in JOI');
+      default:
+        let compactedTypeName = this.getCompacted(prefixedTypeName);
+        let extension = this.extensions[model.extensionPrefix];
+
+        if (this.enumMap[typeName] && extension && extension.preferOA) {
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
+        } else if (this.enumMap[compactedTypeName]) {
+          let extension = this.extensions[model.extensionPrefix];
+          if (extension && extension.preferOA && this.enumMap[typeName]) {
+            compactedTypeName = typeName;
+          }
+
+          if (this.includedInSchema(compactedTypeName)) {
+            return (
+              this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'enum')
+            );
+          }
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'enum');
+        } else if (this.models[typeName] && extension && extension.preferOA) {
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
+        } else if (this.models[compactedTypeName]) {
+          if (this.includedInSchema(compactedTypeName)) {
+            return (
+              this.getJoiBaseTypeForModelOrEnum('schema', typeName, 'model')
+            );
+          }
+          return this.getJoiBaseTypeForModelOrEnum('oa', typeName, 'model');
         } else if (/^schema:/.test(model.memberName)) {
           console.info(
             `**** property ${model.memberName} referenced non-existent type ${compactedTypeName}. This is normal. See https://schema.org/docs/extension.html for details.`
@@ -238,21 +420,28 @@ class TypeScript extends Generator {
 
   createPropertyFromField(field, models, enumMap, hasBaseClass, model) {
     let memberName = field.memberName || field.fieldName;
-    let isExtension = !!field.extensionPrefix;
-    let isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
-    let propertyName = this.convertToCamelCase(field.fieldName);
-    let propertyType = this.createLangTypeString(field, isExtension);
+    const isExtension = !!field.extensionPrefix;
+    const isNew = field.derivedFromSchema; // Only need new if sameAs specified as it will be replacing a schema.org type
+    const propertyName = this.convertToCamelCase(field.fieldName);
+    const propertyTsType = this.createTsTypeString(field, isExtension);
+    // model.type is e.g. schema:Enumeration
+    const propertyJoiType = this.createJoiTypeString(field, isExtension, model.type);
 
     if (["oa", "schema"].includes(this.getPrefix(memberName))) {
       memberName = this.getPropNameFromFQP(memberName);
     }
 
-    let obj = {
+    if (model.type === 'CourseInstance' && field.memberName === 'beta:course') {
+      console.log('hmmm');
+    }
+
+    const obj = {
       memberName: memberName,
       propName: field.fieldName,
       description: this.createDescription(field),
       codeExample: this.createCodeExample(field),
-      propertyType: propertyType,
+      propertyTsType,
+      propertyJoiType,
     };
 
     if (field.disinherit) {
@@ -266,29 +455,79 @@ class TypeScript extends Generator {
     }
   }
 
-  createLangTypeString(field, isExtension) {
-    const types = this.createTypesArray(field, isExtension);
-    
+  /**
+   * @param {Model} subClassModel
+   */
+  createSubClassListEntry(subClassModel) {
+    const oaOrSchema = subClassModel.extension === 'schema' ? 'schema' : 'oa';
+    const subClassModelTypeName = this.convertToClassName(this.getPropNameFromFQP(subClassModel.type));
+    return {
+      subClassTsType: this.getTsBaseTypeForModelOrEnum(oaOrSchema, subClassModelTypeName, 'model'),
+      subClassJoiType: this.getJoiBaseTypeForModelOrEnum(oaOrSchema, subClassModelTypeName, 'model'),
+    };
+  }
+
+  /**
+   * For a list of types (which have alredy been converted to strings), combine them in some way.
+   *
+   * If there's only one type, it is just returned as-is.
+   * If there are multiple, then they are combined in some way
+   *
+   * @param {(types: string[]) => string} combineMultiples
+   * @param {string[]} types
+   */
+  static combineTypes(combineMultiples, types) {
     if (types.length === 0) return null;
     if (types.length === 1) return types[0];
     
-    return `s.union([${types.join(",")}])`
+    return combineMultiples(types);
   }
 
-  createTypesArray(field, isExtension) {
-    let types = []
+  createTsTypeString(field, isExtension) {
+    const typesArray = this.createTsTypesArray(field, isExtension);
+    return TypeScript.combineTypes(types => types.join(' | '), typesArray);
+  }
+
+  /**
+   * The returned array represents a union of possible types
+   */
+  createTsTypesArray(field, isExtension) {
+    return TypeScript.createGenericTypesArray(this.getTsType.bind(this), field, isExtension);
+  }
+
+  /**
+   * @param {string} rootModelPrefixedTypeName
+   */
+  createJoiTypeString(field, isExtension, rootModelPrefixedTypeName) {
+    const typesArray = this.createJoiTypesArray(field, isExtension, rootModelPrefixedTypeName);
+    return TypeScript.combineTypes(types => `Joi.alternatives().try(${types.join(', ')})`, typesArray);
+  }
+
+  /**
+   * The returned array represents a union of possible types
+   *
+   * @param {string} rootModelPrefixedTypeName
+   */
+  createJoiTypesArray(field, isExtension, rootModelPrefixedTypeName) {
+    return TypeScript.createGenericTypesArray(this.getJoiType.bind(this), field, isExtension, rootModelPrefixedTypeName);
+  }
+
+  /**
+   * @param {(fullyQualifieidType: string, isExtension: any, field: any, rootModelPrefixedTypeName: string) => string} getTypeFn
+   * @returns {string[]}
+   */
+  static createGenericTypesArray(getTypeFn, field, isExtension, rootModelPrefixedTypeName) {
+    const types = []
       .concat(field.alternativeTypes)
       .concat(field.requiredType)
       .concat(field.alternativeModels)
       .concat(field.model)
       .concat(field.allowReferencing ? ['https://schema.org/URL'] : [])
-      .filter(type => type !== undefined);
-
-    // We get the types from given schema/OA ones,
-    // and filter out duplicated types
-    types = types
+      .filter(type => type !== undefined)
+      // We get the types from given schema/OA ones,
+      // and filter out duplicated types
       .map(fullyQualifiedType =>
-        this.getLangType(fullyQualifiedType, isExtension, field)
+        getTypeFn(fullyQualifiedType, isExtension, field, rootModelPrefixedTypeName)
       )
       .filter(a => !!a)
       .filter((val, idx, self) => self.indexOf(val) === idx);
@@ -306,47 +545,6 @@ class TypeScript extends Generator {
     return types;
   }
 
-  calculateInherits(subClassOf, derivedFrom, model) {
-    // Prioritise subClassOf over derivedFrom
-    if (subClassOf) {
-      let subClassOfName = this.convertToCamelCase(
-        this.getPropNameFromFQP(subClassOf)
-      );
-
-      if (this.includedInSchema(subClassOf)) {
-        return `::OpenActive::Models::Schema::${subClassOfName}`;
-      }
-
-      if (this.includedInSchema(model.type)) {
-        // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::Schema::${subClassOfName}`;
-      }
-
-      return `::OpenActive::Models::${subClassOfName}`;
-    }
-
-    if (derivedFrom) {
-      let derivedFromName = this.convertToCamelCase(
-        this.getPropNameFromFQP(derivedFrom)
-      );
-
-      if (this.includedInSchema(derivedFrom)) {
-        return `::OpenActive::Models::Schema::${derivedFromName}`;
-      }
-
-      if (this.includedInSchema(model.type)) {
-        // If type is from schema.org, we override schema.org
-        return `::OpenActive::Models::Schema::${derivedFromName}`;
-      }
-
-      // Note if derived from is outside of schema.org there won't be a base class, but it will still be JSON-LD
-      return `::OpenActive::JsonLdModel`;
-    }
-
-    // In the model everything is one or the other (at a minimum must inherit https://schema.org/Thing)
-    // throw new Error("No base class specified for: " + model.type);
-    return `::OpenActive::JsonLdModel`;
-  }
 }
 
 module.exports = TypeScript;
