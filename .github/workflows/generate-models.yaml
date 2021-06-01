@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        language: ['.NET', 'PHP', 'Ruby']
+        language: ['.NET', 'PHP', 'Ruby', 'TypeScript']
 
     steps:
     - name: Checkout

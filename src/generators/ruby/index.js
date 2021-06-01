@@ -97,7 +97,7 @@ class Ruby extends Generator {
     return response;
   }
 
-  createIndexFiles() {
+  async createIndexFiles() {
     return {
       "/files_index.json": JSON.stringify(this.generatedFiles, null, 2)
     };

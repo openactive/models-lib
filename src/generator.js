@@ -6,6 +6,40 @@ const isobject = require('isobject');
 const jsonld = require('jsonld');
 const Handlebars = require('handlebars');
 const axios = require('axios');
+const { throwError } = require('./utils/throw');
+
+/**
+ * @typedef {{
+ *   fieldName?: string;
+ *   allowReferencing?: string;
+ *   [k: string]: any;
+ * }} Field Field within a model.
+ *
+ * @typedef {{
+ *   type?: string;
+ *   extension?: string;
+ *   subClassOf?: string;
+ *   subClassesOf?: [string];
+ *   derivedFrom?: string;
+ *   superClassOf?: string[];
+ *   imperativeConfiguration?: {[k: string]: any};
+ *   fields?: {[k: string]: Field};
+ *   [k: string]: any;
+ * }} Model Data for a model such as an `Event`, `ImageObject`, `Place`, etc.
+ *   The format is the same as in the openactive/data-models project e.g. https://github.com/openactive/data-models/blob/master/versions/2.x/models/Event.json.
+ *
+ * @typedef {{[type: string]: Model}} ModelsObj
+ *
+ * @typedef {{ [filePath: string]: string}} PageContent Specification of a set of generated files to create.
+ *   The key is the path to the file and the value is the file contents.
+ *   e.g.
+ *   ```js
+ *   {
+ *     '/oa/index.ts': "export * as Event from './Event';\n" // ...etc
+ *   }
+ *   ```
+ *   The file path must start with a leading slash and must be relative to the generated output directory.
+ */
 
 class Generator {
   constructor(dataModelDirectory, extensions) {
@@ -14,9 +48,11 @@ class Generator {
     this.extensions = extensions;
     this.cache = [];
 
+    /** @type {ModelsObj} */
     this.models = getModels();
     this.enumMap = getEnums();
     this.namespaces = getMetaData().namespaces;
+    /** @type {string[]} */
     this.generatedFiles = [];
 
     jsonld.documentLoader = this.customLoader.bind(this);
@@ -34,6 +70,8 @@ class Generator {
     this.extensions = this.mutateExtensions(this.extensions);
 
     await this.loadExtensions(this.extensions);
+    this.setModelSuperClassOfs();
+    this.setImplicitAllowReferencings();
   }
 
   async setupHandlebars() {}
@@ -86,7 +124,7 @@ class Generator {
       if (!this.extensions["schema"] && this.includedInSchema(typeName))
         continue;
 
-      let pageContent = await this.createEnumData(typeName, thisEnum);
+      let pageContent = await this.createEnumDataForEnumType(typeName, thisEnum);
       let keyName = this.getEnumFilename(typeName);
 
       data[keyName] = pageContent;
@@ -103,6 +141,24 @@ class Generator {
     await this.dumpStructures();
   }
 
+  /**
+   * Override this to filter out some models for this language.
+   *
+   * @param {string} typeName
+   */
+  filterModel(typeName, model) {
+    return true;
+  }
+
+  /**
+   * Overwrite this in order to generate unit test files.
+   *
+   * @returns {Promise<PageContent | null>}
+   */
+  async createTestFiles() {
+    return null;
+  }
+
   async generateModelClassFiles() {
     await this.initialize();
     await this.cleanModelDirs();
@@ -110,6 +166,10 @@ class Generator {
 
     for (let typeName of this.sortedModels) {
       let model = this.models[typeName];
+      if (!this.filterModel(typeName, model)) {
+        console.log('Skipping model:', typeName);
+        continue;
+      }
       let pageContent = await this.createModelFile(model, this.extensions);
       if (!isobject(pageContent)) {
         let pageName = this.getModelFilename(model);
@@ -126,8 +186,9 @@ class Generator {
       let thisEnum = this.enumMap[typeName];
 
       // filter off schema enums for langs that don't need it
-      if ((!this.extensions["schema"] && this.includedInSchema(typeName)) && !thisEnum.isSchemaPending)
+      if ((!this.extensions["schema"] && this.includedInSchema(typeName)) && !thisEnum.isSchemaPending) {
         continue;
+      }
 
       let pageContent = await this.createEnumFile(typeName, thisEnum);
       if (!isobject(pageContent)) {
@@ -155,6 +216,13 @@ class Generator {
       let pageContent = await this.createIndexFiles();
 
       await this.savePage(pageContent);
+    }
+    // Generate test files (optional)
+    {
+      const pageContent = await this.createTestFiles();
+      if (pageContent) {
+        await this.savePage(pageContent);
+      }
     }
   }
 
@@ -222,17 +290,18 @@ class Generator {
   /**
    * returns an array listing every inheritance route
    *
-   * @code createModelTree("schema:PaymentCard")
-   *        [ [ 'schema:PaymentCard',
-   *           'schema:PaymentMethod',
-   *           'schema:Enumeration',
-   *           'schema:Intangible',
-   *           'schema:Thing' ],
-   *          [ 'schema:PaymentCard',
-   *           'schema:FinancialProduct',
-   *           'schema:Service',
-   *           'schema:Intangible',
-   *           'schema:Thing' ] ]
+   * ```
+   * > createModelTree("schema:PaymentCard")
+   * [ [ 'schema:PaymentCard',
+   *    'schema:PaymentMethod',
+   *    'schema:Enumeration',
+   *    'schema:Intangible',
+   *    'schema:Thing' ],
+   *   [ 'schema:PaymentCard',
+   *    'schema:FinancialProduct',
+   *    'schema:Service',
+   *    'schema:Intangible',
+   *    'schema:Thing' ] ]
    * ```
    *
    * @param modelName
@@ -288,6 +357,9 @@ class Generator {
     return _createModelTree(modelName);
   }
 
+  /**
+   * @param {PageContent} pageContent
+   */
   async savePage(pageContent) {
     for (let filename of Object.keys(pageContent)) {
       let fileContent = pageContent[filename];
@@ -299,7 +371,7 @@ class Generator {
       try {
         await fs.access(dir, fsConstants.R_OK);
       } catch (_e) {
-        await fs.mkdir(dir);
+        await fs.mkdir(dir, {recursive:true});
       }
 
       await fs
@@ -315,6 +387,10 @@ class Generator {
     }
   }
 
+  /**
+   * Load JSON-LD extensions (incl. Schema.org, OA Beta namespace, etc) and then augment the models (which at this
+   * point have only OA namespace-defined relations) with relations from the extensions.
+   */
   async loadExtensions(extensions) {
     let extensionData = {};
 
@@ -393,6 +469,136 @@ class Generator {
     await this.fillAugmentedSubclasses();
   }
 
+  /**
+   * For each model, find out which models it is a super-class of and set that into the models' `.superClassOf`
+   * field.
+   */
+  setModelSuperClassOfs() {
+    for (const [modelType, subModelType] of Generator.getModelSuperClasses(this.models)) {
+      if (!(modelType in this.models)) {
+        // Many schema and cores skos models are missing. This is fine. If you want to see which ones, uncomment below.
+        // console.warn(`setModelSuperClassOfs() - cannot find parent model "${modelType}"`);
+        continue;
+      }
+      const model = this.models[modelType];
+      const superClassOf = Generator.getOrSetDefaultValue(model, 'superClassOf', () => []);
+      superClassOf.push(subModelType);
+    }
+  }
+
+  /**
+   * Get value from an object. If there is no value, set a default value and then return that.
+   *
+   * @template {object} TObj
+   * @template {keyof TObj} TKey
+   * @param {TObj} obj
+   * @param {TKey} key
+   * @param {() => TObj[TKey]} getDefaultFn
+   */
+  static getOrSetDefaultValue(obj, key, getDefaultFn) {
+    if (!(key in obj)) {
+      obj[key] = getDefaultFn();
+    }
+    return obj[key];
+  }
+
+  /**
+   * Generates a pair [parentModelType, childModelType] (e.g. `["Event", "ScheduledSession"]`)
+   * for each parent-child relation between models.
+   *
+   * @param {ModelsObj} models
+   */
+  static *getModelSuperClasses(models) {
+    for (const model of Object.values(models)) {
+      const subClassesOf = Generator.getModelSubClassesOf(model);
+      for (const subClassOf of subClassesOf) {
+        const normalizedParentType = Generator.getModelTypeFromSubClassOf(subClassOf);
+        yield [normalizedParentType, model.type];
+      }
+    }
+  }
+
+  /**
+   * @param {Field} field
+   */
+  static getAllFieldAllowedTypes(field) {
+    return []
+      .concat(field.alternativeTypes)
+      .concat(field.requiredType)
+      .concat(field.alternativeModels)
+      .concat(field.model)
+      .filter(Boolean);
+  }
+
+  getAllPrimitiveAndEnumTypesSet() {
+    const schemaPrefixAndUrl = (baseTypeName) => [`schema:${baseTypeName}`, `https://schema.org/${baseTypeName}`];
+    // TODO deduce these datatypes by loading them from schema.org itself. This would be future-proof
+    return new Set([
+      // All the sub-classes (recursively) of schema.org/DataType
+      ...schemaPrefixAndUrl('DataType'),
+      ...schemaPrefixAndUrl('Number'),
+      ...schemaPrefixAndUrl('Float'),
+      ...schemaPrefixAndUrl('Integer'),
+      ...schemaPrefixAndUrl('DateTime'),
+      ...schemaPrefixAndUrl('Time'),
+      ...schemaPrefixAndUrl('Boolean'),
+      ...schemaPrefixAndUrl('True'),
+      ...schemaPrefixAndUrl('False'),
+      ...schemaPrefixAndUrl('Date'),
+      ...schemaPrefixAndUrl('Text'),
+      ...schemaPrefixAndUrl('URL'),
+      ...schemaPrefixAndUrl('CssSelectorType'),
+      ...schemaPrefixAndUrl('PronounceableText'),
+      ...schemaPrefixAndUrl('XPathType'),
+      // Enums
+      ...(Object.entries(this.enumMap).map(([enumName, theEnum]) => {
+        const nonPrefixedName = (() => {
+          // test:TestOpenBookingFlowEnumeration -> test:, TestOpenBookingFlowEnumeration
+          const regex = /^([^:]+:)?([^:]+)/;
+          const match = regex.exec(enumName);
+          if (!match) {
+            throw new Error(`Enum "${enumName}" surprisingly does not match the expected pattern "${regex}"`);
+          }
+          return match[2];
+        })();
+        // const label = theEnum.label || enumName;
+        // e.g. https://openactive.io/BrokerType
+        const fullEnumType = `${theEnum.namespace}${nonPrefixedName}`;
+        return fullEnumType;
+      }))
+    ]);
+  }
+
+  /**
+   * Schema.org always allows other models to be referenced by their ID.
+   *
+   * So, we update all schema.org models to add `allowReferencing: true` for all fields that link to non-primitive
+   * models.
+   */
+  setImplicitAllowReferencings() {
+    const primitiveTypesAndEnums = this.getAllPrimitiveAndEnumTypesSet();
+    for (const model of Object.values(this.models)) {
+      // only consider schema.org models
+      if (model.extension !== 'schema') {
+        continue;
+      }
+      for (const field of Object.values(model.fields || {})) {
+        // don't bother - it's already set
+        if (field.allowReferencing) {
+          continue;
+        }
+        const fieldTypes = Generator.getAllFieldAllowedTypes(field);
+        const hasAllPrimitiveTypesOrEnums = fieldTypes.every((type) =>
+          primitiveTypesAndEnums.has(type));
+        if (hasAllPrimitiveTypesOrEnums) {
+          continue;
+        }
+        field.allowReferencing = true;
+        field.allowReferencingTrueBecauseSchemaAlwaysImplicitlyAllowsReferencing = true;
+      }
+    }
+  }
+
   storeNamespaces(context) {
     if (Array.isArray(context)) {
       for (let item of context) {
@@ -403,10 +609,32 @@ class Generator {
     }
   }
 
+  /**
+   * @param {string} string
+   */
+  static lowercaseFirstLetter(string) {
+    return `${string[0].toLowerCase()}${string.slice(1)}`;
+  }
+
+  /**
+   * @param {string} subClassOf
+   * @param {any} derivedFrom
+   * @param {Model} model
+   */
+  calculateInherits(subClassOf, derivedFrom, model) {
+    // Overwrite this in Generator child classes for languages whose generation uses inheritance
+    return null;
+  }
+
+  /**
+   * @param {Model} model
+   */
   createModelData(model, extensions) {
     console.log("Generating model ", model.type);
 
-    let fullFields = this.disinheritNotInSpecFields(model, this.models);
+    let fullFields = this.includeInheritedFields ?
+      this.augmentWithParentFields({}, model, this.models, [])
+      : this.disinheritNotInSpecFields(model, this.models);
     let fullFieldsList = Object.values(fullFields)
       .sort(this.compareFields)
       .map((field, index) => {
@@ -416,24 +644,45 @@ class Generator {
 
     let derivedFrom = this.getPropertyWithInheritance("derivedFrom", model);
 
-    let inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
+    const inherits = this.calculateInherits(model.subClassOf, derivedFrom, model);
 
     // Note hasBaseClass is used here to ensure that assumptions about schema.org fields requiring overrides are not applied if the base class doesn't exist in the model
     let hasBaseClass = this.hasBaseClass(model.subClassOf, derivedFrom);
 
     let doc = this.createModelDoc(model);
 
-    let data = {
+    const modelTypePropName = this.getPropNameFromFQP(model.type);
+    const className = this.convertToClassName(modelTypePropName);
+    const data = {
       classDoc: doc,
-      className: this.convertToClassName(this.getPropNameFromFQP(model.type)),
-      inherits: inherits,
+      /**
+       * Symbol name to use for class/type - it differentiates from modelType/modelTypePropName as it disallows
+       * whatever letters the programming language disallows for its symbol names e.g. 3 -> Three
+       *
+       * e.g. ThreeDModel
+       */
+      className,
+      /**
+       * Symbol name to use for variable names in camel-case languages where variables start with a lowercase letter.
+       *
+       * Useful for example code in documentation.
+       *
+       * e.g. threeDModel
+       */
+      classNameFirstLetterLowercased: Generator.lowercaseFirstLetter(className),
+      inherits,
+      /** e.g. schema:3DModel */
       modelType: model.type,
+      /** e.g. 3DModel */
+      modelTypePropName,
       fieldList: this.createTableFromFieldList(
         fullFieldsList,
         hasBaseClass,
         model
       ),
-      fullFields: fullFields
+      fullFields: fullFields,
+      /** list of data for each sub-class of this model */
+      subClassList: this.createTableFromSubClassList(model),
     };
 
     return data;
@@ -445,10 +694,42 @@ class Generator {
     return this.renderModel(data);
   }
 
-  createEnumData(typeName, thisEnum) {
-    console.log("Generating enum ", typeName);
+  /**
+   * Create enum data used for rendering enum mustache files.
+   *
+   * @param {string} enumType
+   * @param {any[]} values
+   * @param {string | string[]} doc
+   */
+  createEnumData(enumType, values, doc) {
+    const typeName = this.convertToClassName(this.getPropNameFromFQP(enumType));
+    return {
+      /** e.g. schema:MeasurementTypeEnumeration */
+      enumType,
+      /**
+       * Symbol name to use for class/type - it differentiates from modelType/modelTypePropName as it disallows
+       * whatever letters the programming language disallows for its symbol names e.g. 3 -> Three
+       *
+       * e.g. MeasurementTypeEnumeration
+       */
+      typeName,
+      /**
+       * Symbol name to use for variable names in camel-case languages where variables start with a lowercase letter.
+       *
+       * Useful for example code in documentation.
+       *
+       * e.g. measurementTypeEnumeration
+       */
+      typeNameFirstLetterLowercased: Generator.lowercaseFirstLetter(typeName),
+      enumDoc: doc,
+      values: values
+    };
+  }
 
-    let doc = this.createEnumDoc(typeName, thisEnum);
+  createEnumDataForEnumType(enumType, thisEnum) {
+    console.log("Generating enum ", enumType);
+
+    let doc = this.createEnumDoc(enumType, thisEnum);
 
     let values = [];
     // enums imported in from extensions have fqValues,
@@ -465,24 +746,17 @@ class Generator {
       }));
     }
 
-    let data = {
-      enumType: typeName,
-      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
-      enumDoc: doc,
-      values: values
-    };
-
-    return data;
+    return this.createEnumData(enumType, values, doc);
   }
 
   createEnumFile(typeName, thisEnum) {
-    let data = this.createEnumData(typeName, thisEnum);
+    let data = this.createEnumDataForEnumType(typeName, thisEnum);
 
     return this.renderEnum(data);
   }
   
-  createPropertiesEnumFile(typeName) {
-    console.log("Generating enum ", typeName);
+  createPropertiesEnumFile(enumType) {
+    console.log("Generating enum ", enumType);
 
     // Create enum values from property list
     const values = [...getProperties()].map(value => ({
@@ -490,12 +764,8 @@ class Generator {
       value: this.convertToClassName(this.getPropNameFromFQP(value))
     }));
 
-    let data = {
-      enumType: typeName,
-      typeName: this.convertToClassName(this.getPropNameFromFQP(typeName)),
-      enumDoc: this.cleanDocLines(['This enumeration contains a value for all properties in the https://schema.org/ and https://openactive.io/ vocabularies.']),
-      values: values
-    };
+    const doc = this.cleanDocLines(['This enumeration contains a value for all properties in the https://schema.org/ and https://openactive.io/ vocabularies.']);
+    const data = this.createEnumData(enumType, values, doc);
 
     return this.renderEnum(data);
   }
@@ -572,6 +842,29 @@ class Generator {
           model
         )
       );
+  }
+
+  /**
+   * @param {Model} subClassModel
+   */
+  createSubClassListEntry(subClassModel) {
+    // Optionally overwrite this in a generator which uses the `subClassList`
+    return null;
+  }
+
+  /**
+   * @param {Model} model
+   */
+  createTableFromSubClassList(model) {
+    return (model.superClassOf ?? []).reduce((entries, subClassTypeName) => {
+      if (!(subClassTypeName in this.models)) {
+        console.warn(`createTableFromSubClassList() - cannot find subClass model "${subClassTypeName}"`);
+      } else {
+        const subClassModel = this.models[subClassTypeName];
+        entries.push(this.createSubClassListEntry(subClassModel));
+      }
+      return entries;
+    }, []);
   }
 
   augmentWithExtension(extension) {
@@ -660,6 +953,9 @@ class Generator {
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
+            if (field.fieldName in model.fields) {
+              throw new Error(`field "${field.fieldName}" (extension: ${field.extensionPrefix}) already exists in model "${model.type}".`);
+            }
             model.extensionFields.push(field.fieldName);
             model.fields[field.fieldName] = { ...field };
           } else {
@@ -828,6 +1124,10 @@ class Generator {
     return "[#" + issueNumber + "](" + url + ")";
   }
 
+  // TODO should this be updated to use getModelTypeFromSubClassOf(..) and to return an array of parent models?
+  /**
+   * @param {Model} model
+   */
   getParentModel(model) {
     let subClassOf = model.subClassOf;
     if (!subClassOf) return;
@@ -841,6 +1141,64 @@ class Generator {
     } else {
       return false;
     }
+  }
+
+  /**
+   * @param {string} modelSubClassOf a string like "#Event", "schema:CreativeWork" or
+   *   "https://schema.org/DigitalDocument"
+   * @returns {string} a string which can be used to get the super class model from
+   *   this.models e.g.
+   *   ```js
+   *   const model = this.models[this.getModelTypeFromSubClassOf('#Event')];
+   *   ```
+   */
+  static getModelTypeFromSubClassOf(modelSubClassOf) {
+    // #FacilityUse -> FacilityUse
+    if (modelSubClassOf.startsWith('#')) {
+      return modelSubClassOf.slice(1);
+    }
+    // https://schema.org/Thing -> schema:Thing, https://pending.schema.org/EventSeries -> schema:EventSeries
+    const schemaUrlRegexResult = new RegExp('^https://([^.]+.)*schema.org/(.+)$').exec(modelSubClassOf);
+    if (schemaUrlRegexResult) {
+      return `schema:${schemaUrlRegexResult[2]}`;
+    }
+    return modelSubClassOf;
+  }
+
+  /**
+   * @param {Model} model
+   */
+  static getModelSubClassesOf(model) {
+    if (model.subClassesOf) { return model.subClassesOf; }
+    if (model.subClassOf) { return [model.subClassOf]; }
+    return [];
+  }
+
+  /**
+   * @param {Model} model
+   * @returns {Model[]}
+   */
+  getParentAndDerivedModels(model) {
+    const parentModels = Generator.getModelSubClassesOf(model).map((superClass) => {
+      const modelType = Generator.getModelTypeFromSubClassOf(superClass);
+      if (!(model.type in this.models)) {
+        // We don't mind if a schema.org model is missing
+        if (modelType.startsWith('schema')) {
+          return null;
+        }
+        throw new Error(`Parent model ${modelType} (parent to ${model.type}) not found`);
+      }
+      return this.models[modelType];
+    }).filter(Boolean);
+    // otherwise, use derivedFrom model, if its a schema.org model
+    if (model.derivedFrom && this.includedInSchema(model.derivedFrom)) {
+      // https://schema.org/QuantitativeValue -> QuantitativeValue
+      const schemaModelBaseName = (new URL(model.derivedFrom)).pathname.slice(1);
+      const prefixedSchemaModelName = `schema:${schemaModelBaseName}`;
+      parentModels.push(this.models[prefixedSchemaModelName]
+        ?? throwError(`Models does not include ${model.type}.${model.derivedFrom}, "${prefixedSchemaModelName}"`));
+    }
+    return parentModels;
   }
 
   getBaseSchemaClass(model) {
@@ -1035,6 +1393,52 @@ class Generator {
     };
   }
 
+  /**
+   * For a given model, add in all the fields from its super-class models (i.e. its parents).
+   *
+   * @param {{[k: string]: any}} augFields An accumulation of fields augmented so far.
+   *   ! This will be mutated.
+   * @param {Model} model
+   * @param {Models} models
+   * @param {any[]} notInSpec
+   * @param {Set<string>} modelTypesLookedAtSoFar A cache of model types looked at so far. Because models can have
+   *   multiple inheritance, it's possible for a model's parent trees to intersect. It would be wasteful to augment
+   *   a model with parent fields more than once.
+   *   ! This will be mutated.
+   */
+  augmentWithParentFields(augFields, model, models, notInSpec, modelTypesLookedAtSoFar=new Set()) {
+    // Ignore if this parent model has already been looked at.
+    if (modelTypesLookedAtSoFar.has(model.type)) { return augFields; }
+    if (model.fields) Object.keys(model.fields).forEach(function(field) { 
+      if (!augFields[field] && !notInSpec.includes(field)) {
+        augFields[field] = model.fields[field];
+      }
+    });
+
+    /* TODO add `@context` here? Presently, the TypeScript generator (which uses this augmentWithParentFields
+    functionality) just manually puts `@context` into each of its models */
+    if (!augFields['@id']) {
+      augFields['@id'] = {
+          'fieldName': '@id',
+          'requiredType': model['idFormat'] || 'http://schema.org/URL',
+          'description': ['A unique url based identifier for the record'],
+          'example': ''
+      };
+      if (model.sampleId) {
+        augFields['@id']['example'] = model['sampleId'] + '12345';
+      }
+    }
+  
+    modelTypesLookedAtSoFar.add(model.type);
+    const newNotInSpec = notInSpec.concat(model.notInSpec);
+    const parentModels = this.getParentAndDerivedModels(model);
+    // Recurse through parents
+    for (const parentModel of parentModels) {
+      this.augmentWithParentFields(augFields, parentModel, models, newNotInSpec, modelTypesLookedAtSoFar);
+    }
+    return augFields;
+  }
+
   sortWithIdAndTypeOnTop(arr) {
     let firstList = [];
     if (arr.includes("type")) firstList.push("type");
@@ -1043,6 +1447,9 @@ class Generator {
     return firstList.concat(remainingList.sort());
   }
 
+  /**
+   * @param {string} str
+   */
   convertToCamelCase(str) {
     if (str === null || str === undefined) return null;
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -1068,6 +1475,10 @@ class Generator {
     return this.getNamespace(url)[0] == "schema";
   }
 
+  /**
+   * @param {string[]} docLines
+   * @returns {string | string[]}
+   */
   cleanDocLines(docLines) {
     if (!docLines) {
       return "";

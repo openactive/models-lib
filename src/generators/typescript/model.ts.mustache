@@ -1,0 +1,113 @@
+// This file was generated
+import * as Joi from 'joi';
+import { OaValidationError } from '../oaValidationError';
+import * as oa from '../oa';
+import * as schema from '../schema';
+
+/**
+ * {{modelType}}
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ */
+export type {{{ className }}} = {
+  '@type': '{{{ modelTypePropName }}}';
+  '@context'?: string | string[];
+{{#fieldList}}
+  {{#if description }}
+  /**
+  {{#each description}}
+   * {{{ . }}}
+  {{/each}}
+  {{#if codeExample }}
+   *
+  {{#each codeExample }}
+   * {{{ . }}}
+  {{/each }}
+  {{/if }}
+   */
+  {{/if }}
+  {{{ renderMemberName }}}?: {{{ propertyTsType }}};
+{{/fieldList}}
+};
+
+/**
+ * {{{ modelType }}}
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ *
+ * This differs from {{{ className }}} because it also allows for objects that have the type of a model that
+ * sub-classes this model. e.g. `Event_OrSubClass` allows `Event`s as well as `ScheduledSession`s, `SessionSeries`,
+ * etc.
+ */
+export type {{{ className }}}OrSubClass =
+  | {{{ className }}}
+  {{#each subClassList}}
+  | {{{ subClassTsType }}}
+  {{/each}}
+  ;
+
+/**
+ * {{{ modelType }}} - Validation schema (w/ JOI)
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ */
+export const {{{ className }}}JoiSchema = Joi.object({
+  '@type': Joi.string().valid('{{{ modelTypePropName }}}').required(),
+  '@context': Joi.alternatives().try([Joi.string(), Joi.array().items(Joi.string())]),
+{{#fieldList}}
+  {{{ renderMemberName }}}: {{{ propertyJoiType }}},
+{{/fieldList}}
+});
+
+/**
+ * {{{ modelType }}} - Validation schema (w/ JOI)
+{{#classDoc}}
+ *
+ * {{{ . }}}
+{{/classDoc}}
+ *
+ * This differs from {{{ className }}}JoiSchema because it also allows for objects that have the type of a model that
+ * sub-classes this model. e.g. `Event.OrSubClassJoiSchema` allows `Event`s as well as `ScheduledSession`s,
+ * `SessionSeries`, etc.
+ */
+export const {{{ className }}}OrSubClassJoiSchema = Joi.alternatives().try([
+  {{{ className }}}JoiSchema,
+  {{#each subClassList}}
+  {{{ subClassJoiType }}},
+  {{/each}}
+]);
+
+/**
+ * Runtime validator for {{{ modelType }}}.
+ *
+ * If some data has a structure which matches a {{{ modelType }}}, it will be returned with the correct type.
+ * Otherwise, this function returns an OAValidationError with details about why the data does not match.
+ *
+ * Use this to e.g. check a JSON object received in an HTTP request. Example usage (for an express request handler):
+ *
+ * ```ts
+ * const maybe{{{ className }}} = {{{ className }}}.validate(req.body); // `req.body` will have type `any` or `unknown`
+ * if (maybe{{{ className }}} instanceof OaValidationError) {
+ *   // From this point on, `maybe{{{ className }}}` will have type `OaValidationError`
+ *   const error = maybe{{{ className }}};
+ *   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
+ * }
+ * // From this point on, `maybe{{{ className }}}` will have type `{{{ className }}}`
+ * const {{{ classNameFirstLetterLowercased }}} = maybe{{{ className }}};
+ * ```
+ */
+export function validate{{{ className }}}(maybe{{{ className }}}: unknown): {{{ className }}} | OaValidationError {
+  const { value, error } = {{{ className }}}JoiSchema.validate(maybe{{{ className }}});
+  if (error) {
+    return new OaValidationError('{{{ className }}}', maybe{{{ className }}}, error);
+  }
+  /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
+  to have the right type. Therefore, we just cast it to the right type. */
+  return value as {{{ className }}};
+}

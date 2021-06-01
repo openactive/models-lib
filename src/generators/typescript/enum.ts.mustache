@@ -1,0 +1,63 @@
+// This file was generated
+import * as Joi from 'joi';
+import { OaValidationError } from '../oaValidationError';
+
+/**
+ * {{{ enumType }}}
+{{#enumDoc}}
+ *
+ * {{{ . }}}
+{{/enumDoc}}
+ */
+export type {{{ typeName }}} = 
+  {{! if enum does not have any values, this is because of a models-lib issue where parent enums (like
+  https://schema.org/MeasurementTypeEnumeration) are not expanded to include the values of their child enums and
+  instead have no values. For now, setting the type to string is a reasonable compromise. }}
+  {{^values}}string{{/values}}
+  {{#each values}}
+  | '{{{memberVal}}}'
+  {{/each}}
+  ;
+
+/**
+ * {{{ enumType }}} - Validation schema (w/ JOI)
+{{#enumDoc}}
+ *
+ * {{{ . }}}
+{{/enumDoc}}
+ */
+export const {{{ typeName }}}JoiSchema = Joi.string().valid(
+  {{! Fortunately, this works even if there are no values. Joi.string().valid(), counter-intuitively, allows any kind of string }}
+  {{#each values}}
+  '{{{memberVal}}}',
+  {{/each}}
+);
+
+/**
+ * Runtime validator for {{{ enumType }}}.
+ *
+ * If some data has one of the values of the {{{ enumType }}} enum, it will be returned with the correct type.
+ * Otherwise, this function returns an `OAValidationError` with details about why the data does not match.
+ *
+ * Use this to e.g. check a JSON object received in an HTTP request. Example usage (for an express request handler):
+ *
+ * ```ts
+ * const maybe{{{ typeName }}} = {{{ typeName }}}.validate(req.body); // `req.body` will have type `any` or `unknown`
+ * if (maybe{{{ typeName }}} instanceof OaValidationError) {
+ *   // From this point on, `maybe{{{ typeName }}}` will have type `OaValidationError`
+ *   const error = maybe{{{ typeName }}};
+ *   // Do something with the error. Maybe ignore it? Or log it? Or throw? Up to you.
+ * }
+ * // From this point on, `maybe{{{ typeName }}}` will have type `{{{ typeName }}}`
+ * const {{{ typeNameFirstLetterLowercased }}} = maybe{{{ typeName }}};
+ * ```
+ */
+export function validate{{{ typeName }}}(maybe{{{typeName}}}: unknown): {{{ typeName }}} | OaValidationError {
+  const { value, error } = {{{ typeName }}}JoiSchema.validate(maybe{{{typeName}}});
+  if (error) {
+    return new OaValidationError('{{{typeName}}}', maybe{{{typeName}}}, error);
+  }
+  /* Joi does not implement TS Type Guards, so TS does not implicitly know that this has now been validated
+  to have the right type. Therefore, we just cast it to the right type. */
+  return value as {{{ typeName }}};
+}

@@ -1,11 +1,13 @@
 const DotNet = require('./generators/dot_net');
 const PHP = require('./generators/php');
 const Ruby = require('./generators/ruby');
+const TypeScript = require('./generators/typescript');
 
 let generators = {
   ".NET": DotNet,
   PHP: PHP,
-  Ruby: Ruby
+  Ruby: Ruby,
+  TypeScript: TypeScript
 };
 
 const program = require("commander");

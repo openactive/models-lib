@@ -7,6 +7,18 @@
     {
       "type": "pwa-node",
       "request": "launch",
+      "name": "Generate TypeScript",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "src/app.js",
+      "args": [
+        "generate", "TypeScript", "--destination", "../models-ts/src/"
+      ]
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
       "name": "Generate .NET",
       "skipFiles": [
         "<node_internals>/**"
