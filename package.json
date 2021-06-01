@@ -18,7 +18,7 @@
     "axios": "^0.21.1",
     "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
-    "handlebars": "^4.5.3",
+    "handlebars": "^4.7.7",
     "isobject": "^4.0.0",
     "jsonld": "^1.8.1"
   },
