@@ -174,7 +174,7 @@ class TypeScript extends Generator {
    */
   convertToClassName(value) {
     // A special case is made for `Event`, which is a reserved type in TypeScript.
-    if (value === 'Event') { return 'Eventt'; }
+    if (value === 'Event') { return 'Event_'; }
     // 3DModel is an invalid class name..
     value = value.replace(/^3/, "Three");
 
