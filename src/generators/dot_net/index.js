@@ -175,9 +175,9 @@ class DotNet extends Generator {
 
       let getSet = '{ get; set; }';
       if (field.restrictToDateTime) {
-        getSet = `{ get { return base.${propertyName}; } set { if (value.IsDateOnly) throw new ArgumentOutOfRangeException("This property must be set to a DateTimeOffset, including a time"); base.${propertyName} = value; } }`;
+        getSet = `{ get { return base.${propertyName}; } set { if (value.IsDateOnly) throw new ArgumentOutOfRangeException("${propertyName}", "This property must be set to a DateTimeOffset, including a time"); base.${propertyName} = value; } }`;
       } else if (field.restrictToDate) {
-        getSet = `{ get { return base.${propertyName}; } set { if (value.!IsDateOnly) throw new ArgumentOutOfRangeException("This property must be set to a date without a time"); base.${propertyName} = value; } }`;
+        getSet = `{ get { return base.${propertyName}; } set { if (!value.IsDateOnly) throw new ArgumentOutOfRangeException("${propertyName}", "This property must be set to a date without a time"); base.${propertyName} = value; } }`;
       }
 
       let order = field.order;
@@ -223,8 +223,7 @@ class DotNet extends Generator {
 
     // If Date and DateTime, use DateTimeValue
     // Always do this for all instances of `startDate` and `endDate` for consistency
-    if ((types.has('DateTimeOffset?') && types.has('DateValue'))
-      || field.fieldName == 'startDate' || field.fieldName == 'endDate') {
+    if ((types.has('DateTimeOffset?') && types.has('DateValue')) || field.overrideDateTimeValue) {
       types.delete('DateTimeOffset?');
       types.delete('DateValue');
       types.add('DateTimeValue');

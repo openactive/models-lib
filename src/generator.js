@@ -1280,7 +1280,7 @@ class Generator {
         thisField.derivedFromSchema = true;
       }
 
-      if (parentModel && parentModel.fields && parentModel.fields[field]) {
+      if (parentModel?.fields?.[field]) {
         var parentField = parentModel.fields[field];
         if (parentField.model == thisField.model 
             && parentField.requiredType == thisField.requiredType
@@ -1292,8 +1292,14 @@ class Generator {
           thisField.override = true;
         }
 
-        // This allows the .NET generator to force override these fields
-        if (thisField.fieldName === 'startDate' || thisField.fieldName === 'endDate') {
+
+      }
+
+      // This allows the .NET generator to force override Event fields
+      if ((model.type === 'Event' || parentModel?.type === 'Event') && (thisField.fieldName === 'startDate' || thisField.fieldName === 'endDate')) {
+        thisField.overrideDateTimeValue = true;
+ 
+        if (parentModel?.fields?.[field]) {
           thisField.dateFieldWithParent = true;
           const possibleTypes = [thisField.requiredType, ...(thisField.alternativeTypes ?? [])];
           if (possibleTypes.includes('https://schema.org/DateTime') && !possibleTypes.includes('https://schema.org/Date')) {
@@ -1303,6 +1309,7 @@ class Generator {
           }
         }
       }
+      
 
       if (parentModel && parentModel.fields && parentModel.fields[field]) {
 
