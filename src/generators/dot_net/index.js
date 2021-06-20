@@ -208,9 +208,9 @@ class DotNet extends Generator {
       .concat(field.model)
       .filter(type => type !== undefined);
 
-    types = types.map(fullyQualifiedType =>
+    types = Array.from(new Set(types.map(fullyQualifiedType =>
       this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
-    );
+    )));
 
     if (types.length == 0) {
       throw new Error("No type found for field: " + field.fieldName);
