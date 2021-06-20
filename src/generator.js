@@ -1289,8 +1289,23 @@ class Generator {
             && parentField.allowReferencing == thisField.allowReferencing
             && parentField.valueConstraint == thisField.valueConstraint)
         {
-            thisField.override = true;
+          thisField.override = true;
         }
+
+        // This allows the .NET generator to force override these fields
+        if (thisField.fieldName === 'startDate' || thisField.fieldName === 'endDate') {
+          thisField.dateFieldWithParent = true;
+          const possibleTypes = [thisField.requiredType, ...(thisField.alternativeTypes ?? [])];
+          if (possibleTypes.includes('https://schema.org/DateTime') && !possibleTypes.includes('https://schema.org/Date')) {
+            thisField.restrictToDateTime = true;
+          } else if (!possibleTypes.includes('https://schema.org/DateTime') && possibleTypes.includes('https://schema.org/Date')) {
+            thisField.restrictToDate = true;
+          }
+        }
+      }
+
+      if (parentModel && parentModel.fields && parentModel.fields[field]) {
+
       }
     });
 

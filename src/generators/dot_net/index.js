@@ -63,9 +63,11 @@ class DotNet extends Generator {
       case "Boolean":
         return "bool?";
       case "Date":
+        return "DateValue";
       case "DateTime":
-      case "Time":
         return "DateTimeOffset?";
+      case "Time":
+        return "TimeValue";
       case "Integer":
         return "long?";
       case "Float":
@@ -130,10 +132,10 @@ class DotNet extends Generator {
   renderJsonConverter(field, propertyType) {
     if (propertyType == "TimeSpan?") {
       return `[JsonConverter(typeof(OpenActiveTimeSpanToISO8601DurationValuesConverter))]`;
-    } else if (field.requiredType == "https://schema.org/Time") {
-      return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601TimeValuesConverter))]`;
     } else if (propertyType == 'DateTimeOffset?') {
       return `[JsonConverter(typeof(OpenActiveDateTimeOffsetToISO8601DateTimeValuesConverter))]`;
+    } else if (propertyType == 'DateTimeValue' || propertyType == 'TimeValue' || propertyType == 'DateValue') {
+      return `[JsonConverter(typeof(OpenActiveDateTimeValuesConverter))]`;
     } else if (propertyType.indexOf("Values<") > -1 || field.requiredType || field.model || field.alternativeModels) {
       return `[JsonConverter(typeof(ValuesConverter))]`;
     } else {
@@ -165,10 +167,17 @@ class DotNet extends Generator {
       };
     } else {
       let methodType = "virtual";
-      if (field.override) {
+      if (field.override || field.dateFieldWithParent) {
         methodType = "override";
-      } else if (!isExtension && hasBaseClass && (isNew || field.override)) {
+      } else if (!isExtension && hasBaseClass && isNew) {
         methodType = "new virtual";
+      }
+
+      let getSet = '{ get; set; }';
+      if (field.restrictToDateTime) {
+        getSet = `{ get { return base.${propertyName}; } set { if (value.IsDateOnly) throw new ArgumentOutOfRangeException("This property must be set to a DateTimeOffset, including a time"); base.${propertyName} = value; } }`;
+      } else if (field.restrictToDate) {
+        getSet = `{ get { return base.${propertyName}; } set { if (value.!IsDateOnly) throw new ArgumentOutOfRangeException("This property must be set to a date without a time"); base.${propertyName} = value; } }`;
       }
 
       let order = field.order;
@@ -191,7 +200,7 @@ class DotNet extends Generator {
           jsonConverter,
           deprecate
         ].filter(val => val),
-        property: `public ${methodType} ${propertyType} ${propertyName} { get; set; }${defaultContent}`
+        property: `public ${methodType} ${propertyType} ${propertyName} ${getSet}${defaultContent}`
       };
     }
   }
@@ -208,9 +217,42 @@ class DotNet extends Generator {
       .concat(field.model)
       .filter(type => type !== undefined);
 
-    types = Array.from(new Set(types.map(fullyQualifiedType =>
+    types = new Set(types.map(fullyQualifiedType =>
       this.getLangType(fullyQualifiedType, enumMap, models, isExtension)
-    )));
+    ));
+
+    // If Date and DateTime, use DateTimeValue
+    // Always do this for all instances of `startDate` and `endDate` for consistency
+    if ((types.has('DateTimeOffset?') && types.has('DateValue'))
+      || field.fieldName == 'startDate' || field.fieldName == 'endDate') {
+      types.delete('DateTimeOffset?');
+      types.delete('DateValue');
+      types.add('DateTimeValue');
+
+      if (types.size !== 1) {
+        throw new Error("Unsupported combination of date/time types: " + field.fieldName);
+      }
+    }
+
+    // Date and DateTime in a list, use List<DateTimeValue>
+    if (types.has('List<DateTimeOffset>') && types.has('List<DateValue>')) {
+      types.delete('List<DateTimeOffset>');
+      types.delete('List<DateValue>');
+      // TODO: Make this DateTimeValue and support lists that include both Date and DateTime. Updates to ValuesConverter are required to handle this.
+      types.add('List<DateTimeOffset>');
+
+      if (types.size !== 1) {
+        throw new Error("Unsupported combination of date/time types: " + field.fieldName);
+      }
+    }
+
+    // Lists of DateTimeValue/DateValue/TimeValue are not supported by OpenActive.NET. Updates to ValuesConverter are required to handle this.
+    // TODO: Remove this after ValuesConverter has been updated
+    if (types.has('List<DateTimeValue>') || types.has('List<DateValue>') || types.has('List<TimeValue>')) {
+      throw new Error("Unsupported combination of date/time types: " + field.fieldName);
+    }
+
+    types = Array.from(types);
 
     if (types.length == 0) {
       throw new Error("No type found for field: " + field.fieldName);
