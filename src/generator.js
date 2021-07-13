@@ -830,7 +830,7 @@ class Generator {
   createTableFromFieldList(fieldList, hasBaseClass, model) {
     return fieldList
       .filter(
-        field => field.fieldName != "type" && field.fieldName != "@context"
+        field => field.fieldName != "type" && field.fieldName != "id" && field.fieldName != "@context"
       )
       .map(field =>
         // note: not changing call for now as this goes into language implementation
@@ -1449,7 +1449,6 @@ class Generator {
             '`@id` properties are used as identifiers for compatibility with JSON-LD. The value of such a property must always be an absolute URI that provides a stable globally unique identifier for the resource, as described in [RFC3986](https://tools.ietf.org/html/rfc3986).',
             'The primary purpose of the URI format in this context is to provide natural namespacing for the identifier. Hence, the URI itself may not resolve to a valid endpoint, but must use a domain name controlled by the resource owner (the organisation responsible for the OpenActive open data feed).'
           ],
-          'example': model.sampleId
       };
     }
   
