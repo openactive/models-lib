@@ -60,7 +60,10 @@ program
       await generator[action].apply(generator);
     };
 
-    run().catch(e => console.error(e));
+    run().catch(e => {
+      console.error(e);
+      process.exit(1);
+    });
   });
 
 program.command("schema_models").action(() => {});
