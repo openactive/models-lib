@@ -1431,8 +1431,9 @@ class Generator {
   augmentWithParentFields(augFields, model, models, notInSpec, modelTypesLookedAtSoFar=new Set()) {
     // Ignore if this parent model has already been looked at.
     if (modelTypesLookedAtSoFar.has(model.type)) { return augFields; }
-    if (model.fields) Object.keys(model.fields).forEach(function(field) { 
-      if (!augFields[field] && !notInSpec.includes(field)) {
+    if (model.fields) Object.keys(model.fields).forEach(function(field) {
+      // Do not include "id" fields, as they are added explicitly below as `@id`
+      if (field !== 'id' && !augFields[field] && !notInSpec.includes(field)) {
         augFields[field] = model.fields[field];
       }
     });
