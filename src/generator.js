@@ -957,7 +957,7 @@ class Generator {
               // Add this property if it does not already exist
               model.extensionFields.push(field.fieldName);
               model.fields[field.fieldName] = { ...field };
-            } else if (this.getCompacted(model.fields[field.fieldName]?.sameAs) == this.getCompacted(node.supersededBy)) {
+            } else if (this.getCompacted(model.fields[field.fieldName]?.sameAs, false) == this.getCompacted(node.supersededBy, false)) {
               // Ignore extension properties that are superseded by existing properties with the same name
             } else {
               throw new Error(`field "${field.fieldName}" (extension: ${field.extensionPrefix}) already exists in model "${model.type}".`);
@@ -1560,7 +1560,7 @@ class Generator {
   }
 
   // compact a url down, i.e. https://schema.org/SportsActivityLocation to schema:SportsActivityLocation
-  getCompacted(url) {
+  getCompacted(url, hideOpenActiveNamespace = true) {
     if (!url) return "";
     if (/^ArrayOf#/.test(url)) url = url.replace(/^ArrayOf#/, "");
     if (!url.match(/^https?:/i)) {
@@ -1581,7 +1581,7 @@ class Generator {
       if (url.startsWith(val)) {
         let remainder = url.substr(val.length);
 
-        if (key === "oa") {
+        if (key === "oa" && hideOpenActiveNamespace) {
           return remainder;
         }
 
