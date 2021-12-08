@@ -953,11 +953,15 @@ class Generator {
           if (model) {
             model.extensionFields = model.extensionFields || [];
             model.fields = model.fields || {};
-            if (field.fieldName in model.fields) {
+            if (!(field.fieldName in model.fields)) {
+              // Add this property if it does not already exist
+              model.extensionFields.push(field.fieldName);
+              model.fields[field.fieldName] = { ...field };
+            } else if (getCompacted(field.sameAs) == getCompacted(node.supersededBy)) {
+              // Ignore extension properties that are superseded by existing properties with the same name
+            } else {
               throw new Error(`field "${field.fieldName}" (extension: ${field.extensionPrefix}) already exists in model "${model.type}".`);
             }
-            model.extensionFields.push(field.fieldName);
-            model.fields[field.fieldName] = { ...field };
           } else {
             let isSchema = /^schema:/.test(prop);
             let msg =
