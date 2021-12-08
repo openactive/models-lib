@@ -28,7 +28,10 @@ jobs:
   
     - run: npm install
       working-directory: models-lib
-    
+  
+    - name: Update models-lib with latest data-models
+      run: npm update @openactive/data-models
+  
     - name: Generate ${{ matrix.language }} models
       run: npm start -- generate ${{ matrix.language }} --destination ../output/
       working-directory: models-lib
