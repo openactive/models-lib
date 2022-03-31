@@ -171,7 +171,7 @@ class PHP extends Generator {
           }
           return "\\OpenActive\\Enums\\" + camelName;
         } else if (this.models[typeName] && extension && extension.preferOA) {
-          return "\\OpenActive\\Models\\" + camelName;
+          return "\\OpenActive\\Models\\OA\\" + camelName;
         } else if (this.models[compactedTypeName]) {
           if (this.includedInSchema(compactedTypeName)) {
             return "\\OpenActive\\Models\\SchemaOrg\\" + camelName;
