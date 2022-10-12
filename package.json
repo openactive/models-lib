@@ -20,7 +20,7 @@
     "fs-extra": "^7.0.1",
     "handlebars": "^4.7.7",
     "isobject": "^4.0.0",
-    "jsonld": "^1.8.1"
+    "jsonld": "^8.1.0"
   },
   "devDependencies": {
     "prettier": "^1.18.2"
