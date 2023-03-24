@@ -1,7 +1,7 @@
 # models-lib [![Model Generation](https://github.com/openactive/models-lib/actions/workflows/generate-models.yaml/badge.svg?branch=master)](https://github.com/openactive/models-lib/actions/workflows/generate-models.yaml)
 Supporting code and tooling for OpenActive models, common across all languages
 
-OpenActive aims to support implementers with models written in [PHP](https://github.com/openactive/models-php), [Ruby](https://github.com/openactive/models-ruby), and [.NET](https://github.com/openactive/OpenActive.NET). This repository is intended to hold resources (e.g. generators, tests) shared across all of the above.
+OpenActive aims to support implementers with models written in [PHP](https://github.com/openactive/models-php), [Ruby](https://github.com/openactive/models-ruby), [.NET](https://github.com/openactive/OpenActive.NET) and [JavaScript/TypeScript](https://github.com/openactive/models-ts). This repository is intended to hold resources (e.g. generators, tests) shared across all of the above.
 
 ## Installation
 
@@ -48,5 +48,11 @@ npm start -- generate Ruby --destination ../models-ruby/lib/openactive/
 
 ```bash
 npm start -- generate .NET --destination ../OpenActive.NET/OpenActive.NET/
+```
+
+JavaScript/TypeScript:
+
+```bash
+npm start -- generate TypeScript --destination ../models-ts/src/
 ```
 
