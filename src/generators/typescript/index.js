@@ -85,7 +85,7 @@ class TypeScript extends Generator {
    * @returns {Promise<PageContent>}
    */
   async createTestFiles() {
-    const examples = await getExamplesWithContent("2.0");
+    const examples = getExamplesWithContent("2.0");
     /** @type {PageContent} */
     const result = {};
     for (const example of examples) {
