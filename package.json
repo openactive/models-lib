@@ -15,7 +15,7 @@
   "license": "MIT",
   "dependencies": {
     "@openactive/data-models": "^2.0.234",
-    "axios": "^0.21.1",
+    "axios": "^0.21.2",
     "commander": "^3.0.2",
     "fs-extra": "^7.0.1",
     "handlebars": "^4.7.7",
