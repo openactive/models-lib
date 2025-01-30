@@ -10,7 +10,7 @@ Clone this project:
 git clone https://github.com/openactive/models-lib.git
 ```
 
-This project requires Node v18 (npm v6).
+This project requires Node v18 (npm v9).
 A `.nvmrc` file is provided for clarity.
 
 Install dependencies:
