@@ -21,10 +21,10 @@ jobs:
       with:
         path: models-lib
     
-    - name: Use Node.js 14.x
+    - name: Use Node.js 18.17.1
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 18.17.1
   
     - run: npm install
       working-directory: models-lib
