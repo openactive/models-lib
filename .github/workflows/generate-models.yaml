@@ -8,20 +8,11 @@ on:
 
 jobs:
   generate:
-
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        language:
-          - name: '.NET'
-            repo: 'OpenActive.NET'
-          - name: 'PHP'
-            repo: 'models-php'
-          - name: 'Ruby'
-            repo: 'models-ruby'
-          - name: 'TypeScript'
-            repo: 'models-ts'
+        language: ['.NET', 'PHP', 'Ruby', 'TypeScript']
 
     steps:
     - name: Checkout
@@ -41,11 +32,15 @@ jobs:
       run: npm update @openactive/data-models
       working-directory: models-lib
   
-    - name: Generate ${{ matrix.language.name }} models
-      run: npm start -- generate ${{ matrix.language.name }} --destination ../output/
+    - name: Generate ${{ matrix.language }} models
+      run: npm start -- generate ${{ matrix.language }} --destination ../output/
       working-directory: models-lib
 
-    - name: Test model build
-      uses: openactive/${{ matrix.language.repo }}/.github/workflows/create-data-model-pr.yaml@ci/testable-build
-      with:
-        models-lib_ref: ${{ github.ref }}
+  test:
+    strategy:
+      matrix:
+        repos: ['OpenActive.NET', 'models-php', 'models-ruby', 'models-ts']
+      
+    uses: openactive/${{ matrix.repo }}/.github/workflows/create-data-model-pr.yaml@ci/testable-build
+    with:
+      models-lib_ref: ${{ github.ref }}
