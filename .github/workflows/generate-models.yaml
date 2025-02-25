@@ -36,11 +36,8 @@ jobs:
       run: npm start -- generate ${{ matrix.language }} --destination ../output/
       working-directory: models-lib
 
-  test:
-    strategy:
-      matrix:
-        repo: ['OpenActive.NET', 'models-php', 'models-ruby', 'models-ts']
-      
-    uses: openactive/${{ matrix.repo }}/.github/workflows/create-data-model-pr.yaml@ci/testable-build
+  test-ts:
+    needs: generate
+    uses: openactive/models-ts/.github/workflows/create-data-model-pr.yaml@ci/testable-build
     with:
       models-lib_ref: ${{ github.ref }}
