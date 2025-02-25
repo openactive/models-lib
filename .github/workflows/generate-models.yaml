@@ -39,7 +39,7 @@ jobs:
   test:
     strategy:
       matrix:
-        repos: ['OpenActive.NET', 'models-php', 'models-ruby', 'models-ts']
+        repo: ['OpenActive.NET', 'models-php', 'models-ruby', 'models-ts']
       
     uses: openactive/${{ matrix.repo }}/.github/workflows/create-data-model-pr.yaml@ci/testable-build
     with:
