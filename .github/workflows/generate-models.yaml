@@ -8,7 +8,6 @@ on:
 
 jobs:
   generate:
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -37,3 +36,8 @@ jobs:
       run: npm start -- generate ${{ matrix.language }} --destination ../output/
       working-directory: models-lib
 
+  test-ts:
+    needs: generate
+    uses: openactive/models-ts/.github/workflows/create-data-model-pr.yaml@ci/testable-build
+    with:
+      models-lib_ref: ${{ github.ref }}
