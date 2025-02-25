@@ -14,14 +14,14 @@ jobs:
     strategy:
       matrix:
         language:
-          - language: '.NET'
-            repo: OpenActive.NET
-          - language: 'PHP'
-            repo: models-php
-          - language: 'Ruby'
-            repo: models-ruby
-          - language: 'TypeScript'
-            repo: models-ts
+          - name: '.NET'
+            repo: 'OpenActive.NET'
+          - name: 'PHP'
+            repo: 'models-php'
+          - name: 'Ruby'
+            repo: 'models-ruby'
+          - name: 'TypeScript'
+            repo: 'models-ts'
 
     steps:
     - name: Checkout
@@ -41,11 +41,11 @@ jobs:
       run: npm update @openactive/data-models
       working-directory: models-lib
   
-    - name: Generate ${{ matrix.language }} models
-      run: npm start -- generate ${{ matrix.language }} --destination ../output/
+    - name: Generate ${{ matrix.language.name }} models
+      run: npm start -- generate ${{ matrix.language.name }} --destination ../output/
       working-directory: models-lib
 
     - name: Test model build
-      uses: openactive/models-ts/.github/workflows/create-data-model-pr.yaml@ci/testable-build
+      uses: openactive/${{ matrix.language.repo }}/.github/workflows/create-data-model-pr.yaml@ci/testable-build
       with:
         models-lib_ref: ${{ github.ref }}
