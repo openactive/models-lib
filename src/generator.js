@@ -758,8 +758,12 @@ class Generator {
   createPropertiesEnumFile(enumType) {
     console.log("Generating enum ", enumType);
 
-    // Create enum values from property list
-    const values = [...getProperties()].map(value => ({
+    // Create enum values from property list. Recent schema.org releases also map to properties from other
+    // vocabularies (e.g. http://purl.org/dc/terms/description), which would duplicate names such as
+    // "Description", so keep only schema.org and OpenActive properties.
+    const values = [...getProperties()]
+      .filter(value => value.startsWith("https://schema.org/") || value.startsWith("https://openactive.io/"))
+      .map(value => ({
       memberVal: value,
       value: this.convertToClassName(this.getPropNameFromFQP(value))
     }));
@@ -869,6 +873,28 @@ class Generator {
 
   augmentWithExtension(extension) {
     let { graph: extModelGraph, prefix: extensionPrefix } = extension;
+
+    // Recent schema.org releases also declare terms from other vocabularies (e.g. snomed:, gs1:, dct:,
+    // fibo-*:) that schema.org terms are mapped to. They are not schema.org or OpenActive terms, and they
+    // produce invalid or duplicate names in the generated libraries (e.g. a class named "63653004", or
+    // dct:description and gs1:description alongside schema:description). Only generate schema.org's own
+    // terms, and drop links from schema.org classes to the skipped classes, so that inheritance is
+    // unchanged from earlier schema.org releases.
+    if (extensionPrefix === "schema") {
+      const isExternal = node => !String(node.id).startsWith("schema:");
+      const skippedIds = new Set(
+        extModelGraph.filter(node => (node.type === "Class" || node.type === "Property") && isExternal(node)).map(node => node.id)
+      );
+      extModelGraph = extModelGraph.filter(node => !skippedIds.has(node.id));
+      // Also used afterwards by augmentEnumsWithExtension
+      extension.graph = extModelGraph;
+      extModelGraph.forEach(node => {
+        if (node.subClassOf) {
+          const parents = (Array.isArray(node.subClassOf) ? node.subClassOf : [node.subClassOf]).filter(id => !skippedIds.has(id));
+          node.subClassOf = parents;
+        }
+      });
+    }
 
     // Add classes first
     extModelGraph.forEach(node => {
