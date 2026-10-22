@@ -58,6 +58,32 @@ class TypeScript extends Generator {
     return true;
   }
 
+  /**
+   * The value of `@type` that identifies this model in JSON-LD data.
+   *
+   * OpenActive and schema.org types are written without a prefix, because the OpenActive context defines terms for
+   * OpenActive types and uses schema.org as its `@vocab`. Types from extensions (e.g. `beta:Bar` or
+   * `test:OpenBookingSimulateAction`) are only reachable through their extension's prefix, so the prefix is kept.
+   *
+   * @param {Model} model
+   */
+  getJsonLdTypeName(model) {
+    const prefix = this.getPrefix(model.type);
+    if (prefix && prefix !== 'schema') {
+      return model.type;
+    }
+    return this.getPropNameFromFQP(model.type);
+  }
+
+  createModelData(model, extensions) {
+    const data = super.createModelData(model, extensions);
+    return {
+      ...data,
+      /** e.g. Place, Thing, beta:Bar */
+      jsonLdTypeName: this.getJsonLdTypeName(model),
+    };
+  }
+
   async renderModel(data) {
     this.modelTemplate =
       this.modelTemplate ||

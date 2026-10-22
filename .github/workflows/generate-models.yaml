@@ -17,12 +17,12 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: models-lib
     
     - name: Use Node.js 18.17.1
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v4
       with:
         node-version: 18.17.1
   
@@ -36,4 +36,12 @@ jobs:
     - name: Generate ${{ matrix.language }} models
       run: npm start -- generate ${{ matrix.language }} --destination ../output/
       working-directory: models-lib
+
+  # Generate the TypeScript models from this ref inside models-ts, then build and test them there,
+  # so that changes which produce invalid TypeScript are caught before they reach models-ts
+  test-ts:
+    needs: generate
+    uses: openactive/models-ts/.github/workflows/create-data-model-pr.yaml@main
+    with:
+      models-lib_ref: ${{ github.ref }}
 
